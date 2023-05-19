@@ -1,4 +1,9 @@
-import socket, struct, os, threading, random, select, ipaddress, time
+import socket, struct, os, threading, random, select, ipaddress, time, enum
+from scapy.all import srp, Ether, ARP
+
+class Protocol(enum.Enum):
+    ICMP = 0
+    ARP = 1
 
 class NetworkMapper:
     def __init__(self, db : str=None) -> None:
@@ -29,37 +34,24 @@ class NetworkMapper:
     
     def icmp_receiver(self, s : socket.socket, event : threading.Event):
 
-        counter = 0
-
         while 1:
 
             if event.is_set():
                 break
 
-            r, w, e = select.select([s], [], [], 0.01)
+            read, write, error = select.select([s], [], [], 0)
 
-            if r:
+            if read:
 
                 data, addr = s.recvfrom(1024)
+                src = ipaddress.ip_address(addr[0])
 
-                try:
-                    hostname = socket.gethostbyaddr(addr[0])
-                    self.results[addr] = {'hostname': hostname, 'reply': True}
-                except Exception as e:
-                    if self.verbose > 0:
-                        print(e)
+                self.results[str(src)] = {'version': src.version}
 
-    def discover(self, cidr : str):
+        for host in self.results.keys():
+            print(host)
 
-        network = None
-
-        try:
-            network = ipaddress.IPv4Network(cidr)
-        except ValueError as e:
-            print(f'[ERROR]: Invalid CIDR ({cidr}): {e}')
-
-        if not network:
-            return
+    def icmp_discover(self, network : ipaddress.IPv4Network | ipaddress.IPv6Network):
 
         s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
 
@@ -68,25 +60,79 @@ class NetworkMapper:
         thread = threading.Thread(target=self.icmp_receiver, args=[s, event])
         thread.start()
 
-        for host in network.hosts():
+        for retry in range(3):
+
+            for host in network.hosts():
+
+                try:
+
+                    packet = self.create_icmp_packet()
+                    endpoint = (str(host), 0) # IPAddress, Port
+
+                    s.sendto(packet, endpoint)
+
+                except Exception as e:
+                    print(f'[ERROR]: Failed to send packet to {host}: {e}')
+                    
+            time.sleep(0.5)
+
+        start = time.time()
+
+        try:
+
+            while not event.is_set():
+
+                time.sleep(0.01) # Sleep to prevent CPU dying
+
+                if time.time() - start > 3: # Stop listening for ICMP responses after 3 seconds
+                    break
+
+        except KeyboardInterrupt as e:
+            print('[INFO]: Stopping threads...')
+
+        event.set()
+        thread.join()
+
+        return self.results
+
+    def arp_discover(self, network : ipaddress.IPv4Network | ipaddress.IPv6Network):
+
+        hosts = [str(x) for x in network.hosts()]
+
+        print(f'[INFO]: Sending ARP packets...')
+        answers, unanswered = srp(Ether(dst='ff:ff:ff:ff:ff:ff') / ARP(pdst=['192.168.1.1', '192.168.1.2', '192.168.1.221']), timeout=3, verbose=0, promisc=False)
+
+        print(f'[INFO]: Processing {len(answers)} answers')
+        for send, recv in answers:
+
+            mac = recv.hwsrc
+            src = ipaddress.ip_address(recv.psrc)
+            hostname = None
 
             try:
-                s.sendto(self.create_icmp_packet(), (str(host), 0))
+                hostname = socket.gethostbyaddr(str(src))
             except Exception as e:
-                print('Error:', e, host)
+                print(f'[ERROR]: Hostname lookup failed')
 
-        #event.set()
-        #thread.join()
+            self.results[src] = {'mac': mac, 'hostname': hostname if hostname else None, 'version': src.version}
 
-        print('Done Sending')
+        
+
+    def discover(self, cidr : str, protocol : Protocol):
+
+        network = None
+
         try:
-            while not event.is_set():
-                time.sleep(0.1)
-        except KeyboardInterrupt as e:
-            event.set()
-            thread.join()
-
-        print(self.results)
+            network = ipaddress.IPv4Network(cidr)
+        except ValueError as e:
+            print(f'[ERROR]: Invalid CIDR ({cidr}): {e}')
+            return
+        
+        if protocol == Protocol.ICMP:
+            return self.icmp_discover(network)
+        elif protocol == Protocol.ARP:
+            return self.arp_discover(network)
 
 network = NetworkMapper()
-network.discover(cidr='192.168.1.0/24')
+results = network.discover(cidr='192.168.1.0/24', protocol=Protocol.ICMP)
+print(results)
