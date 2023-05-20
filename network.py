@@ -142,7 +142,3 @@ class NetworkMapper:
             return self.icmp_discover(network)
         elif protocol == Protocol.ARP:
             return self.arp_discover(network)
-
-network = NetworkMapper()
-results = network.discover(cidr='192.168.1.0/24', protocol=Protocol.ICMP)
-print(json.dumps(results, indent=4))
