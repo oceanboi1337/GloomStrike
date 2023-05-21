@@ -1,9 +1,12 @@
-import socket, struct, os, threading, random, select, ipaddress, time, enum, json
+import socket, struct, os, threading, select, ipaddress, time, enum
 from scapy.all import srp, Ether, ARP
+from collections import defaultdict
 
 class Protocol(enum.Enum):
     ICMP = 0
     ARP = 1
+    TCP = 2
+    UDP = 3
 
 class NetworkMapper:
     def __init__(self, db : str=None) -> None:
@@ -32,6 +35,14 @@ class NetworkMapper:
 
         return packet
     
+    def ip2hostname(self, host : str):
+
+        try:
+            hostname = socket.getnameinfo((str(host), 0), 0)
+            return hostname
+        except Exception as e:
+            print(f'[ERROR]: Failed to get hostname for {host}')
+
     def icmp_receiver(self, s : socket.socket, event : threading.Event):
 
         while 1:
@@ -50,16 +61,8 @@ class NetworkMapper:
 
         for host in self.results.keys():
             
-            hostname = None
-
-            try:
-                hostname = socket.getnameinfo((str(host), 0), 0)
-            except Exception as e:
-                print(f'[ERROR]: Hostname lookup for {host}  failed')
-
-            if hostname:
+            if hostname := self.ip2hostname(str(host)):
                 self.results[str(host)]['hostname'] = hostname[0]
-
 
     def icmp_discover(self, network : ipaddress.IPv4Network | ipaddress.IPv6Network):
 
@@ -117,12 +120,7 @@ class NetworkMapper:
 
             mac = recv.hwsrc
             src = ipaddress.ip_address(recv.psrc)
-            hostname = None
-
-            try:
-                hostname = socket.getnameinfo((str(src), 0), 0)
-            except Exception as e:
-                print(f'[ERROR]: Hostname lookup for {src}  failed')
+            hostname= self.ip2hostname(str(src))
 
             self.results[str(src)] = {'mac': mac, 'hostname': hostname[0] if hostname else None, 'version': src.version}
 
@@ -142,3 +140,29 @@ class NetworkMapper:
             return self.icmp_discover(network)
         elif protocol == Protocol.ARP:
             return self.arp_discover(network)
+
+    def port_scan_tcp(self, host : str, ports : list[int]):
+
+        result = []
+
+        for port in ports:
+
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(3)
+
+            if not s.connect_ex((host, port)):
+                continue
+
+            ports.append({'port': port, 'protocol': 'tcp', 'status': True})
+
+
+    def port_scan(self, host : str, ports : list[int], protocol : Protocol=Protocol.ARP):
+
+        result = None
+
+        match protocol:
+
+            case Protocol.TCP:
+                result = self.port_scan_tcp(host, ports)
+            case Protocol.UDP: 
+                result = self.port_scan_udp(host, ports)

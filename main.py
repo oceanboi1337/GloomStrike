@@ -38,6 +38,8 @@ if __name__ == '__main__':
     p_network.add_argument('-hd', '--discovery', help='Enable host discovery scan', action='store_true')
     p_network.add_argument('-as', '--arp', help='Will use ARP scan for host discovery', action='store_true')
     p_network.add_argument('-id', '--icmp', help='Will use ICMP requests for host discovery', action='store_true')
+    p_network.add_argument('--tcp', help='Port scanner will use TCP', action='store_true')
+    p_network.add_argument('--udp', help='Port scanner will use UDP', action='store_true')
     p_network.add_argument('-o', '--output', help='Choose output format', default='')
     p_network.add_argument('target', help='The target CIDR / Host to scan', type=str)
 
