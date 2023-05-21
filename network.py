@@ -14,7 +14,6 @@ class NetworkMapper:
         self.icmp_sequence = 1
         self.threads = []
         self.verbose = 0
-        self.results = dict()
 
     def create_icmp_packet(self):
         
@@ -43,7 +42,7 @@ class NetworkMapper:
         except Exception as e:
             print(f'[ERROR]: Failed to get hostname for {host}')
 
-    def icmp_receiver(self, s : socket.socket, event : threading.Event):
+    def icmp_receiver(self, s : socket.socket, results : dict, event : threading.Event):
 
         while 1:
 
@@ -62,15 +61,16 @@ class NetworkMapper:
         for host in self.results.keys():
             
             if hostname := self.ip2hostname(str(host)):
-                self.results[str(host)]['hostname'] = hostname[0]
+                results[str(host)]['hostname'] = hostname[0]
 
     def icmp_discover(self, network : ipaddress.IPv4Network | ipaddress.IPv6Network):
 
         s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
 
         event = threading.Event()
+        results = {}
 
-        thread = threading.Thread(target=self.icmp_receiver, args=[s, event])
+        thread = threading.Thread(target=self.icmp_receiver, args=[s, results, event])
         thread.start()
 
         for retry in range(2):
@@ -111,6 +111,7 @@ class NetworkMapper:
     def arp_discover(self, network : ipaddress.IPv4Network | ipaddress.IPv6Network):
 
         hosts = [str(x) for x in network.hosts()]
+        results = {}
 
         print(f'[INFO]: Sending ARP packets...')
         answers, unanswered = srp(Ether(dst='ff:ff:ff:ff:ff:ff') / ARP(pdst=hosts), timeout=3, verbose=0, promisc=False)
@@ -122,9 +123,9 @@ class NetworkMapper:
             src = ipaddress.ip_address(recv.psrc)
             hostname= self.ip2hostname(str(src))
 
-            self.results[str(src)] = {'mac': mac, 'hostname': hostname[0] if hostname else None, 'version': src.version}
+            results[str(src)] = {'mac': mac, 'hostname': hostname[0] if hostname else None, 'version': src.version}
 
-        return self.results
+        return results
 
     def discover(self, cidr : str, protocol : Protocol):
 
@@ -145,16 +146,19 @@ class NetworkMapper:
 
         result = []
 
-        for port in ports:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(3)
 
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(3)
+        for port in ports:
 
             if not s.connect_ex((host, port)):
                 continue
 
             ports.append({'port': port, 'protocol': 'tcp', 'status': True})
 
+        print(result)
+
+        return result
 
     def port_scan(self, host : str, ports : list[int], protocol : Protocol=Protocol.ARP):
 
