@@ -1,18 +1,14 @@
-import socket, struct, os, threading, select, ipaddress, time, enum
+import socket, struct, os, threading, select, ipaddress, time, enum, json
 from scapy.all import srp, Ether, ARP
+from helpers import QueueHandler
 from collections import defaultdict
-
-class Protocol(enum.Enum):
-    ICMP = 0
-    ARP = 1
-    TCP = 2
-    UDP = 3
 
 class NetworkMapper:
     def __init__(self, db : str=None) -> None:
         self.db = db
         self.icmp_sequence = 1
-        self.threads = []
+        self.threads = {}
+        self.threads = {'port_scanner': defaultdict(list), 'discovery': []}
         self.verbose = 0
 
     def create_icmp_packet(self):
@@ -95,7 +91,7 @@ class NetworkMapper:
 
             while not event.is_set():
 
-                time.sleep(0.01) # Sleep to prevent CPU dying
+                time.sleep(0.01) # Sleep to prevent CPU hog
 
                 if time.time() - start > 3: # Stop listening for ICMP responses after 3 seconds
                     break
@@ -142,7 +138,7 @@ class NetworkMapper:
         elif protocol == Protocol.ARP:
             return self.arp_discover(network)
 
-    def port_scan_tcp(self, host : str, ports : list[int]):
+    def port_scan_tcp(self, target : ipaddress._BaseNetwork, ports : list[int]):
 
         result = []
 
@@ -151,22 +147,34 @@ class NetworkMapper:
 
         for port in ports:
 
-            if not s.connect_ex((host, port)):
+            print(f'[INFO]: Scanning {target}:{port}')
+
+            if s.connect_ex((str(target), port)) != 0:
                 continue
 
-            ports.append({'port': port, 'protocol': 'tcp', 'status': True})
+            print(f'[INFO]: Port {target}:{port} is open')
 
-        print(result)
+            result.append({'port': port, 'protocol': 'tcp', 'state': True, 'service': 'unknown'})
 
         return result
 
-    def port_scan(self, host : str, ports : list[int], protocol : Protocol=Protocol.ARP):
+    def port_scan(self, target : ipaddress._BaseNetwork, ports : list[int], threads : int=1):
 
         result = None
 
-        match protocol:
+        queue = QueueHandler(ports)
 
-            case Protocol.TCP:
-                result = self.port_scan_tcp(host, ports)
-            case Protocol.UDP: 
-                result = self.port_scan_udp(host, ports)
+        for tid in range(threads):
+
+            thread = threading.Thread(target=self.port_scan_tcp, args=[target, queue, ports])
+            self.threads['port_scanner'][target].append(tid)
+
+        print(json.dumps(self.threads, indent=4))
+        print(threading.enumerate()[])
+
+        try:
+            target = ipaddress.ip_network(target)
+        except ValueError as e:
+            print(f'[ERROR]: {e}')
+
+        return result
