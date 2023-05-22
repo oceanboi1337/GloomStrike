@@ -1,4 +1,4 @@
-import ipaddress, socket, struct, random, re
+import ipaddress, socket, struct, random, re, os
 
 def is_valid_domain(domain : str):
     r = re.compile('^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$')
@@ -23,42 +23,53 @@ def is_valid_network(network : str):
     except:
         pass
 
-def calculate_checksum(packet : bytes):
-    checksum = sum(packet)
-    carry = checksum >> 16
+def calculate_checksum(packet):
 
-    while carry:
-        checksum = (checksum & 0xffff) + carry
-        carry = checksum & 0xff
+    if len(packet) % 2 == 1:
+        packet += b'\0'
+
+    data = struct.unpack('!%dH' % (len(packet) // 2), packet)
+    
+    checksum = sum(data)
+    checksum += (checksum & 0xffff >> 16)
+    checksum += (checksum >> 16)
 
     return ~checksum & 0xffff
 
 def create_packet_syn(src : ipaddress._BaseAddress, dst : ipaddress._BaseAddress, port : int):
 
-    src_port = random.randint(1, 65536)
+    src_port = 1337
     dst_port = port
-    seq = 1
+    seq = 0
     ack = 0
     flags = 0x2
+    length = 0x28
     window = 5840
     checksum = 0
     pointer = 0
 
-    ip_header = struct.pack('!BBHHHBBH4s4s',
-                            (src.version << 4) + 5, 0, 
-                            0, 0,
+    tmp_ip_header = struct.pack('!BBHHHBBH4s4s',
+                            (src.version << 4) + 5, 0,
+                            length, os.getpid() & 0xffff,
                             0, 255,
-                            socket.IPPROTO_TCP, 0,
+                            socket.IPPROTO_TCP, checksum,
+                            src.packed, dst.packed)
+    
+    ip_header = struct.pack('!BBHHHBBH4s4s',
+                            (src.version << 4) + 5, 0,
+                            0x28, os.getpid() & 0xffff,
+                            0, 255,
+                            socket.IPPROTO_TCP, calculate_checksum(tmp_ip_header),
                             src.packed, dst.packed)
 
-    tcp_header = struct.pack('!HHLLBBHHH',
+    tmp_tcp_header = struct.pack('!HHLLBBHHH',
                              src_port, dst_port,
                              seq, ack, (5 << 4) + 0,
                              flags, window,
                              checksum, pointer)
 
-    pseudo_header = struct.pack('!4s4sBBH', src.packed, dst.packed, 0, socket.IPPROTO_TCP, len(tcp_header))
-    checksum = calculate_checksum(pseudo_header + tcp_header)
+    pseudo_header = struct.pack('!4s4sBBH', src.packed, dst.packed, 0, socket.IPPROTO_TCP, len(tmp_tcp_header))
+    checksum = calculate_checksum(pseudo_header + tmp_tcp_header)
 
     tcp_header = struct.pack('!HHLLBBHHH',
                              src_port, dst_port,
