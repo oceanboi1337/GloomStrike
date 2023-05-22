@@ -6,8 +6,7 @@ def nic(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
     #network = ipaddress.ip_network(dst)
     interfaces = socket.getaddrinfo(socket.gethostname(), None, family, 1, 0)
 
-    print(interfaces)
-    return ipaddress.ip_address(interfaces[0][0])
+    return ipaddress.ip_address(interfaces[0][4][0])
 
     """for family, sock_type, protocol, flags, addr in interfaces:
 

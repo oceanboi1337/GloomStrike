@@ -60,7 +60,3 @@ class TcpHeader:
 		
 		def is_flags_set(self, flags : int):
 			return self._flags & flags == self._flags
-
-data = bytes.fromhex('45000028285240006706AFF068D01058C0A801BD01BBCDFCAAC16B03FED7480C501008023FE40000')
-tcp_header = TcpHeader(data[20::])
-print(tcp_header._ack, tcp_header._sequence)
