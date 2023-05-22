@@ -1,84 +1,119 @@
-import ipaddress, threading, network, socket, sys, select
-from helpers import QueueHandler
+import ipaddress, threading, network, socket, sys, select, time, random
+import helpers
 from collections import defaultdict
 
 if sys.platform == 'win32':
-    from scapy.all import sr1, IP, TCP
+	from scapy.all import sr1, IP, TCP
 
 class PortScanner:
 
-    def __init__(self, target : str, ports : str) -> None:
-        
-        self.threads = []
-        self.results = []
+	def __init__(self, target : str, ports : str, src_port : int=None) -> None:
+		
+		self.threads = []
+		self.results = {}
+		self.event = threading.Event()
 
-        if '/' in target:
-            self.target : ipaddress._BaseNetwork = network.is_valid_network(target)
-        else:
-            self.target : ipaddress._BaseAddress = network.is_valid_host(target)
+		if '/' in target:
+			self.target : ipaddress._BaseNetwork = network.helpers.is_valid_network(target)
+		else:
+			self.target : ipaddress._BaseAddress = network.helpers.is_valid_host(target)
 
-        if self.target == None:
-            print(f'[ERROR]: Invalid target {target}')
+		if self.target == None:
+			print(f'[ERROR]: Invalid target {target}')
 
-        if not ports:
-            self.ports = [21, 22, 25, 53, 80, 110, 123, 443, 465, 631, 993, 995, 3306]
-        elif ports == '-':
-            self.ports = list(range(1, 65536))
-        else:
-            self.ports = [int(x) for x in ports.split(',')]
+		if not ports:
+			self.ports = [21, 22, 25, 53, 80, 110, 123, 443, 465, 631, 993, 995, 3306]
+		elif ports == '-':
+			self.ports = list(range(1, 65536))
+		else:
+			self.ports = [int(x) for x in ports.split(',')]
 
-        self.queue = QueueHandler(self.ports)
+		self.src = network.helpers.nic(self.target)
+		self.src_port = random.randint(1, 65536) if not src_port else src_port
 
-    def tcp_scan(self, s : socket.socket):
+		self.queue = helpers.QueueHandler(self.ports)
 
-        for port in self.queue:
+	def _syn_scan(self):
 
-            packet = network.create_packet_syn(ipaddress.ip_address('192.168.1.189'), self.target, port)
+		packets_sent = 0
 
-            s.sendto(packet, (str(self.target), 0))
+		for port in self.queue:
 
-    def listener(self, s : socket.socket):
+			if sys.platform == 'win32':
 
-        while 1:
+				answers = sr1(IP(), verbose=0)
 
-            read, write, error = select.select([s], [], [], 0)
+			else:
 
-            if read:
+				if port in self.results:
+					continue
 
-                data, addr = s.recvfrom(1024)
+				packet = network.create_packet_syn(self.src, self.target, self.src_port, port)
 
-                ip = network.models.IPHeader(data[0:20])
-                tcp = network.models.TcpHeader(data[20:40])
+				try:
 
-                if ip.src != self.target or tcp.dst_port != 1337:
-                    continue
+					s.sendto(packet, (str(self.target), 0))
+					packets_sent += 1
 
-                #print(tcp_header._offset, tcp_header._flags, data.hex())
+				except Exception as e:
 
-                if tcp.is_flags_set(network.Flags.RST):
-                    continue
-                
-                elif tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
-                    print(f'[INFO]: Port {tcp.src_port} is open')
+					print(f'[ERROR]: Failed to send SYN packet', e)
 
-    def start(self, threads : int=0):
-        
-        if sys.platform != 'win32':
+		return packets_sent
 
-            family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
-            s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
-            s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+	def _listener(self, event : threading.Event):
 
-            listener_thread = threading.Thread(target=self.listener, args=[s])
-            listener_thread.start()
+		while not event.is_set():
 
-            if threads > 0:
+			read, write, error = select.select([self.s], [], [], 0)
 
-                for tid in range(threads):
+			if read:
 
-                    thread = threading.Thread(target=self.tcp_scan, args=[s])
-                    thread.start()
-                    
-                    self.threads.append(thread)
-            else:
-                self.tcp_scan()
+				data, addr = self.s.recvfrom(1024)
+
+				ip = network.models.IPHeader(data[0:20])
+				tcp = network.models.TcpHeader(data[20:40])
+
+				if ip.src != self.target or tcp.dst_port != 1337:
+					continue
+
+				if tcp.is_flags_set(network.Flags.RST):
+					continue
+				
+				elif tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
+
+					port = int(tcp.src_port)
+					service = 'unknown'
+
+					print(f'[INFO]: Port {port} is open')
+
+					if port not in self.results:
+
+						self.results[port] = {'state': 'open', 'service': service}
+
+	def scan(self, timeout : int=3, retries : int=3):
+
+		if sys.platform != 'win32':
+
+			family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
+			
+			self.s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
+			self.s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+
+			listener_thread = threading.Thread(target=self._listener)
+			listener_thread.start()
+
+		for retry in range(retries):
+
+			packets_sent = self._syn_scan()
+			if packets_sent == 0:
+				continue
+
+			time.sleep(timeout)
+			self.queue.reset()
+
+			print(f'[INFO]: Attempt {retry}')
+
+		self.event.set()
+
+		return self.results

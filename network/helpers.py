@@ -1,6 +1,21 @@
 import ipaddress, socket, struct, random, re, os
 
+def nic(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
+
+    family = socket.AF_INET if dst.version == 4 else socket.AF_INET6
+    #network = ipaddress.ip_network(dst)
+    interfaces = socket.getaddrinfo(socket.gethostname(), None, family, 1, 0)
+
+    print(interfaces)
+    return ipaddress.ip_address(interfaces[0][0])
+
+    """for family, sock_type, protocol, flags, addr in interfaces:
+
+        src = ipaddress.ip_address(addr[0])
+    """
+
 def is_valid_domain(domain : str):
+
     r = re.compile('^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$')
     return r.match(domain)
 

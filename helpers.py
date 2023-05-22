@@ -11,8 +11,16 @@ class QueueHandler:
         for item in items:
             self.queue.put(item)
 
+    def reset(self):
+
+        for item in self.items:
+            self.queue.put(item)
+
     def get(self):
-        return self.queue.get()
+        try:
+            return self.queue.get(block=False)
+        except queue.Empty:
+            raise StopIteration
     
     def __iter__(self):
         return self
@@ -21,4 +29,4 @@ class QueueHandler:
         try:
             return self.get()
         except queue.Empty:
-            return StopIteration
+            raise StopIteration
