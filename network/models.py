@@ -120,7 +120,7 @@ class TcpHeader:
 
 ip = IPHeader()
 ip.version = 4
-ip.length = 20
+ip.length = 0x28
 ip.ttl = 255
 ip.identifier = os.getpid() & 0xffff
 ip._src = ipaddress.IPv4Address('192.168.1.189')
