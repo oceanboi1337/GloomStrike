@@ -128,6 +128,7 @@ tcp = TcpHeader(ip_header=ip)
 tcp._src_port = 1337
 tcp._dst_port = 80
 tcp._flags = Flags.SYN
+tcp._window = 5840
 tcp._window = 0x1337
 
 print((ip.pack() + tcp.pack()).hex())
