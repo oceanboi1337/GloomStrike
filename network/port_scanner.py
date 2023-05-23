@@ -4,7 +4,7 @@ from collections import defaultdict
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import *
 
-if sys.platform != 'win32':
+if sys.platform == 'win32':
     from scapy.all import sr1, IPv46, TCP
 
 class PortScanner:
@@ -46,7 +46,7 @@ class PortScanner:
                 if port in self.results:
                     continue
 
-                if sys.platform != 'win32':
+                if sys.platform == 'win32':
                     
                     ip_header = IPv46(dst=str(self.target))
                     tcp_header = TCP(sport=self.src_port, dport=port, flags='S')
@@ -114,7 +114,7 @@ class PortScanner:
 
     def worker(self, timeout : int=3, retries : int=3):
 
-        if sys.platform != 'win32':
+        if sys.platform == 'win32':
 
             for tid in range(15):
 
@@ -155,7 +155,7 @@ class PortScanner:
 
     def scan(self, timeout : int=3, retries : int=3, background : bool=False):
 
-        if sys.platform == 'win32':
+        if sys.platform != 'win32':
 
             family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
             
