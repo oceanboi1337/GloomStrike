@@ -1,112 +1,104 @@
-import ipaddress, socket, struct, enum, re, os, netifaces, json
+import ipaddress, socket, struct, enum, re, os, socket, time
+from network import models
 
 class Protocol(enum.Enum):
-	ARP = 0
-	ICMP = 1
+    ARP = 0
+    ICMP = 1
 
 def nslookup(host : str, reverse : bool=False):
 
-	try:
-		if reverse:
-			return socket.getnameinfo((host, 0), 0)[0]
-		else:
-			return socket.getaddrinfo(host, 0)[0][4][0]
-	except Exception as e:
-		print(f'{"Reverse" if reverse else ""} nslookup failed to resolve {host}')
+    try:
+        if reverse:
+            return socket.getnameinfo((host, 0), 0)[0]
+        else:
+            return socket.getaddrinfo(host, 0)[0][4][0]
+    except Exception as e:
+        print(f'{"Reverse" if reverse else ""} nslookup failed to resolve {host}')
 
+def ping(dst : ipaddress._IPAddressBase):
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+    s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+
+    ip = models.IPHeader()
+    ip.version = 4
+    ip.length = 0x28
+    ip.protocol = socket.IPPROTO_ICMP
+    ip.ttl = 255
+    ip.identifier = os.getpid() & 0xffff
+    ip._src = default_interface(dst)
+    ip._dst = dst.packed
+
+    icmp = models.IcmpHeader()
+    icmp.type = 8
+    icmp.code = 0
+    icmp.id = os.getpid() & 0xffff
+
+    packet = ip.pack() + icmp.pack()
+
+    s.sendto(packet, (str(dst), 0))
+
+    start = time.time()
+    data, addr = s.recvfrom(1024)
+    s.close()
+
+    return int((time.time() - start) * 1000)
+
+def avg_rtt(dst : ipaddress._IPAddressBase, rounds : int=10):
+
+    total_rtt = 0
+
+    for _ in range(rounds):
+
+        total_rtt += ping(dst)
+
+    return (total_rtt / rounds) + 100 # Average RTT + 100ms
 
 def default_interface(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
 
-	gateways = netifaces.gateways()
-	default_gateway = gateways['default'][socket.AF_INET][0]
+    family = socket.AF_INET if dst.version == 4 else socket.AF_INET6
 
-	for gateway in [v for k, v in gateways.items() if type(v) == dict]:
-			
-		addr, iface = gateway.get(socket.AF_INET)
+    s = socket.socket(family, socket.SOCK_DGRAM)
+    s.connect((str(dst), 80))
 
-		if addr == default_gateway:
-			
-			for addresses in netifaces.ifaddresses(iface).get(socket.AF_INET):
-				
-				return ipaddress.ip_address(addresses['addr'])
-	
+    return is_valid_host(s.getsockname()[0])
+    
 def is_valid_domain(domain : str):
 
-	r = re.compile('^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$')
-	return r.match(domain)
+    r = re.compile('^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$')
+    return r.match(domain)
 
 def is_valid_host(host : str):
 
-	try:
-		return ipaddress.ip_address(host)
-	except:
-		if is_valid_domain(host):
-			try:
-				addr = socket.getaddrinfo(host, 0)
-				return is_valid_host(addr[0][4][0])
-			except Exception as e:
-				print(f'[ERROR]: Failed to resolve {host}', e)
-	
+    try:
+        return ipaddress.ip_address(host)
+    except:
+        if is_valid_domain(host):
+            try:
+                addr = socket.getaddrinfo(host, 0)
+                return is_valid_host(addr[0][4][0])
+            except Exception as e:
+                print(f'[ERROR]: Failed to resolve {host}', e)
+    
 def is_valid_network(network : str):
 
-	try:
-		return ipaddress.ip_network(network)
-	except:
-		pass
+    try:
+        return ipaddress.ip_network(network)
+    except:
+        pass
 
 def calculate_checksum(packet):
 
-	if len(packet) % 2 == 1:
-		packet += b'\0'
+    if len(packet) % 2 == 1:
+        packet += b'\0'
 
-	data = struct.unpack('!%dH' % (len(packet) // 2), packet)
-	
-	checksum = sum(data)
-	checksum += (checksum & 0xffff >> 16)
-	checksum += (checksum >> 16)
+    data = struct.unpack('!%dH' % (len(packet) // 2), packet)
+    
+    checksum = sum(data)
+    checksum += (checksum & 0xffff >> 16)
+    checksum += (checksum >> 16)
 
-	return ~checksum & 0xffff
-
-def create_packet_syn(src_addr : ipaddress._BaseAddress, dst_addr : ipaddress._BaseAddress, src_port : int, dst_port : int):
-
-	seq = 0
-	ack = 0
-	flags = 0x2
-	length = 0x28
-	window = 5840
-	checksum = 0
-	pointer = 0
-
-	tmp_ip_header = struct.pack('!BBHHHBBH4s4s',
-							(src_addr.version << 4) + 5, 0,
-							length, os.getpid() & 0xffff,
-							0, 255,
-							socket.IPPROTO_TCP, checksum,
-							src_addr.packed, dst_addr.packed)
-	
-	ip_header = struct.pack('!BBHHHBBH4s4s',
-							(src_addr.version << 4) + 5, 0,
-							0x28, os.getpid() & 0xffff,
-							0, 255,
-							socket.IPPROTO_TCP, calculate_checksum(tmp_ip_header),
-							src_addr.packed, dst_addr.packed)
-
-	tmp_tcp_header = struct.pack('!HHLLBBHHH',
-							 src_port, dst_port,
-							 seq, ack, (5 << 4) + 0,
-							 flags, window,
-							 checksum, pointer)
-
-	pseudo_header = struct.pack('!4s4sBBH', src_addr.packed, dst_addr.packed, 0, socket.IPPROTO_TCP, len(tmp_tcp_header))
-	checksum = calculate_checksum(pseudo_header + tmp_tcp_header)
-
-	tcp_header = struct.pack('!HHLLBBHHH',
-							 src_port, dst_port,
-							 seq, ack, (5 << 4) + 0,
-							 flags, window,
-							 checksum, pointer)
-
-	return ip_header + tcp_header
+    return ~checksum & 0xffff
 
 def create_packet_icmp(src, dst):
         

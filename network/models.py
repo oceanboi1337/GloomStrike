@@ -117,20 +117,24 @@ class TcpHeader:
 
         def is_flags_set(self, flags : int):
             return self._flags & flags == self._flags
+        
+class IcmpHeader:
 
-ip = IPHeader()
-ip.version = 4
-ip.length = 0x28
-ip.protocol = socket.IPPROTO_TCP
-ip.ttl = 255
-ip.identifier = os.getpid() & 0xffff
-ip._src = ipaddress.IPv4Address('192.168.1.189')
-ip._dst = ipaddress.IPv4Address('192.168.1.1')
+        def __init__(self, data : bytes=None, ip_header : IPHeader=None) -> None:
 
-tcp = TcpHeader(ip_header=ip)
-tcp._src_port = 1337
-tcp._dst_port = 80
-tcp._flags = Flags.SYN
-tcp._window = 5840
+            self.data = data[0:20] if data else b'\0' * 8
+            self.fields = struct.unpack('!bbHHh', self.data)
 
-print((ip.pack() + tcp.pack()).hex())
+            self.type = self.data[0]
+            self.code = self.data[1]
+            self.checksum = self.data[2]
+            self.id = self.data[3]
+
+        def pack(self):
+             
+             icmp = struct.pack('!bbHHh', self.type, self.code, self.checksum, self.id, 1)
+
+             checksum = network.helpers.calculate_checksum(icmp) & 0xffff
+
+             return struct.pack('!bbHHh', self.type, self.code, checksum, self.id, 1)
+

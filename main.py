@@ -1,13 +1,21 @@
-import argparse, json, sys, time
+import argparse, json, sys, time, os, socket, ipaddress
 import network
 
 def f_network(args):
 
-    #port_scanner = network.PortScanner(args.target, ports=args.port)
-    #result = port_scanner.scan(background=False)
+    if args.port_scan:
+
+        port_scanner = network.PortScanner(args.target, ports=args.port)
+        result = port_scanner.scan(background=True)
+
+        while 1:
+            print(port_scanner.progress, port_scanner._progress, (port_scanner.queue.queue.maxsize * port_scanner.retries) - len(port_scanner.results))
+            time.sleep(1)
+            pass
+
     pass
 
-def hashcrack(args):
+def f_hashcrack(args):
     pass
 
 if __name__ == '__main__':
@@ -40,5 +48,5 @@ if __name__ == '__main__':
 
     match args.module.lower():
 
-        case 'network': f_network(args)
-        case 'hashcrack': hashcrack(args)
+        case 'network': result = f_network(args)
+        case 'hashcrack': result = f_hashcrack(args)

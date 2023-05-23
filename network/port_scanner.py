@@ -36,7 +36,7 @@ class PortScanner:
 
     @property
     def progress(self) -> int:
-        return int((self._progress / ((self.queue.queue.maxsize * self.retries) - len(self.results))) * 100)
+        return round((self._progress / ((self.queue.queue.maxsize * self.retries) - len(self.results)) * 100), 2)
 
     def _syn_scan(self):
 
@@ -45,22 +45,21 @@ class PortScanner:
             for port in self.queue:
 
                 # It is double checked because this can be threaded
-                if self.event.is_set():
-                    break
+                #if self.event.is_set():
+                #    break
 
                 # Skip the port if it has already been scanned
                 if port in self.results:
+                    self._progress += 1
                     continue
 
                 if sys.platform == 'win32':
                     
                     ip_header = IPv46(dst=str(self.target))
                     tcp_header = TCP(sport=self.src_port, dport=port, flags='S')
-                    
-                    if (packet := sr1(ip_header / tcp_header, timeout=1, verbose=0)) == None:
-                        continue
 
-                    if packet.haslayer(TCP) and packet[TCP].flags == 18 and port not in self.results:
+                    if (packet := sr1(ip_header / tcp_header, timeout=self.timeout / 1000, verbose=0)) != None \
+                    and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self.results:
 
                         print(f'[INFO]: Port {port} is open')
 
@@ -86,14 +85,12 @@ class PortScanner:
                     packet = ip.pack() + tcp.pack()
 
                     try:
-
                         self.s.sendto(packet, (str(self.target), 0))
-                        self._progress += 1
-
                     except Exception as e:
                         print(f'[ERROR]: Failed to send SYN packet', e)
 
-                time.sleep(0.00001)
+                self._progress += 1
+                time.sleep(0.001)
 
     def _listener(self):
 
@@ -132,6 +129,12 @@ class PortScanner:
 
     def worker(self):
 
+        print(f'[INFO]: Calculating RTT Average...')
+
+        self.timeout = network.helpers.avg_rtt(self.target)
+
+        print(f'[INFO]: Average RTT: {self.timeout} ms')
+
         for _ in range(15 if sys.platform == 'win32' else 1):
 
             thread = threading.Thread(target=self._syn_scan)
@@ -145,20 +148,20 @@ class PortScanner:
 
             if self.queue.queue.empty():
 
+                time.sleep(self.timeout)
                 self.queue.reset()
                 i += 1
 
-            time.sleep(0.01)
+            time.sleep(0.001)
 
-        self.event.set()
+        time.sleep(10)
 
         return self.results
 
-    def scan(self, timeout : int=3, retries : int=3, background : bool=False):
+    def scan(self, retries : int=3, background : bool=False):
 
         self.retries = retries
-        self.timeout = timeout
-
+        
         self.event.clear()
 
         if sys.platform != 'win32':
