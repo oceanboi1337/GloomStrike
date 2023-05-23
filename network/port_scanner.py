@@ -47,9 +47,11 @@ class PortScanner:
 
             for port in self.queue:
 
+                # It is double checked because this can be threaded
                 if self.event.is_set():
                     break
 
+                # Skip the port if it has already been scanned
                 if port in self.results:
                     continue
 
