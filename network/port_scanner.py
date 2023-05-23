@@ -77,7 +77,7 @@ class PortScanner:
                     ip._src = self.src.packed
                     ip._dst = self.target.packed
 
-                    tcp = network.models.TcpHeader(ip=ip)
+                    tcp = network.models.TcpHeader(ip_header=ip)
                     tcp._src_port = self.src_port
                     tcp._dst_port = port
                     tcp._flags = network.Flags.SYN
