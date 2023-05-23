@@ -83,7 +83,7 @@ class PortScanner:
                     tcp._flags = network.Flags.SYN
                     tcp._window = 5840
 
-                    packet = ip + tcp
+                    packet = ip.pack() + tcp.pack()
 
                     try:
 
