@@ -82,8 +82,6 @@ class PortScanner:
 
 				if tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
 
-					print('Got response')
-
 					port = int(tcp.src_port)
 					service = 'unknown'
 
@@ -93,17 +91,10 @@ class PortScanner:
 
 						self.results[port] = {'state': 'open', 'service': service}
 
-	def scan(self, timeout : int=3, retries : int=3):
+	def stop(self):
+		self.event.set()
 
-		if sys.platform != 'win32':
-
-			family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
-			
-			self.s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
-			self.s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
-
-			listener_thread = threading.Thread(target=self._listener)
-			listener_thread.start()
+	def worker(self, timeout : int=3, retries : int=3):
 
 		for retry in range(retries):
 
@@ -119,3 +110,27 @@ class PortScanner:
 		self.event.set()
 
 		return self.results
+
+	def scan(self, timeout : int=3, retries : int=3, background : bool=False):
+
+		if sys.platform != 'win32':
+
+			family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
+			
+			self.s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
+			self.s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+
+			self.listener_thread = threading.Thread(target=self._listener)
+			self.listener_thread.daemon = True
+			self.listener_thread.start()
+
+		if background:
+
+			self.background_thread = threading.Thread(target=self.worker, args=[timeout, retries])
+			self.background_thread.daemon = True
+			self.background_thread.start()
+
+			return self.results
+		
+		else:
+			return self.worker(timeout, retries)

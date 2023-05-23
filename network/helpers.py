@@ -2,9 +2,8 @@ import ipaddress, socket, struct, random, re, os, netifaces, json
 
 def nic(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
 
-	default_gateway = socket.getaddrinfo('_gateway', 0)[0][4][0]
-
 	gateways = netifaces.gateways()
+	default_gateway = gateways['default'][socket.AF_INET][0]
 
 	for gateway in [v for k, v in gateways.items() if type(v) == dict]:
 			
@@ -15,7 +14,6 @@ def nic(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
 			for addresses in netifaces.ifaddresses(iface).get(socket.AF_INET):
 				
 				return ipaddress.ip_address(addresses['addr'])
-
 	
 def is_valid_domain(domain : str):
 

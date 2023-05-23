@@ -3,10 +3,12 @@ import network
 
 def f_network(args):
 
-    port_scanner = network.PortScanner(args.target, ports=[])
-    result = port_scanner.scan()
+    port_scanner = network.PortScanner(args.target, ports=args.port)
 
-    print(result)
+    try:
+        result = port_scanner.scan(background=False)
+    except KeyboardInterrupt:
+        port_scanner.stop()
 
 def hashcrack(args):
     pass
