@@ -14,7 +14,7 @@ def nic(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
 			
 			for addresses in netifaces.ifaddresses(iface).get(socket.AF_INET):
 				
-				return addresses['addr']
+				return ipaddress.ip_address(addresses['addr'])
 
 	
 def is_valid_domain(domain : str):

@@ -48,22 +48,22 @@ class PortScanner:
 				if port in self.results:
 					continue
 
-				packet = network.create_packet_syn(self.src, self.target, self.src_port, port)
+				packet = network.helpers.create_packet_syn(self.src, self.target, self.src_port, port)
 
 				try:
 
-					s.sendto(packet, (str(self.target), 0))
+					self.s.sendto(packet, (str(self.target), 0))
 					packets_sent += 1
 
 				except Exception as e:
-
+					
 					print(f'[ERROR]: Failed to send SYN packet', e)
 
 		return packets_sent
 
-	def _listener(self, event : threading.Event):
+	def _listener(self):
 
-		while not event.is_set():
+		while not self.event.is_set():
 
 			read, write, error = select.select([self.s], [], [], 0)
 
@@ -74,13 +74,15 @@ class PortScanner:
 				ip = network.models.IPHeader(data[0:20])
 				tcp = network.models.TcpHeader(data[20:40])
 
-				if ip.src != self.target or tcp.dst_port != 1337:
+				if ip.src != self.target or tcp.dst_port != self.src_port:
 					continue
 
 				if tcp.is_flags_set(network.Flags.RST):
 					continue
-				
-				elif tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
+
+				if tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
+
+					print('Got response')
 
 					port = int(tcp.src_port)
 					service = 'unknown'

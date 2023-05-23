@@ -4,7 +4,9 @@ import network
 def f_network(args):
 
     port_scanner = network.PortScanner(args.target, ports=[])
-    port_scanner.scan()
+    result = port_scanner.scan()
+
+    print(result)
 
 def hashcrack(args):
     pass
