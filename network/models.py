@@ -90,7 +90,7 @@ class TcpHeader:
                             self.ip_header.dst.packed,
                             0,
                             socket.IPPROTO_TCP,
-                            0x14)
+                            len(self.ip_header.pack()))
 
             checksum = network.helpers.calculate_checksum(psh + tcp)
 
