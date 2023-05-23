@@ -1,136 +1,178 @@
-import ipaddress, threading, network, socket, sys, select, time, random
+import ipaddress, threading, network, socket, sys, select, time, random, logging
 import helpers
 from collections import defaultdict
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+from scapy.all import *
 
-if sys.platform == 'win32':
-	from scapy.all import sr1, IP, TCP
+if sys.platform != 'win32':
+    from scapy.all import sr1, IPv46, TCP
 
 class PortScanner:
 
-	def __init__(self, target : str, ports : str, src_port : int=None) -> None:
-		
-		self.threads = []
-		self.results = {}
-		self.event = threading.Event()
+    def __init__(self, target : str, ports : str, src_port : int=None) -> None:
+        
+        self.threads = []
+        self.results = {}
+        self.event = threading.Event()
 
-		if '/' in target:
-			self.target : ipaddress._BaseNetwork = network.helpers.is_valid_network(target)
-		else:
-			self.target : ipaddress._BaseAddress = network.helpers.is_valid_host(target)
+        if '/' in target:
+            self.target : ipaddress._BaseNetwork = network.helpers.is_valid_network(target)
+        else:
+            self.target : ipaddress._BaseAddress = network.helpers.is_valid_host(target)
 
-		if self.target == None:
-			print(f'[ERROR]: Invalid target {target}')
+        if self.target == None:
+            print(f'[ERROR]: Invalid target {target}')
 
-		if not ports:
-			self.ports = [21, 22, 25, 53, 80, 110, 123, 443, 465, 631, 993, 995, 3306]
-		elif ports == '-':
-			self.ports = list(range(1, 65536))
-		else:
-			self.ports = [int(x) for x in ports.split(',')]
+        if not ports:
+            self.ports = [21, 22, 25, 53, 80, 110, 123, 443, 465, 631, 993, 995, 3306]
+        elif ports == '-':
+            self.ports = list(range(1, 65536))
+        else:
+            self.ports = [int(x) for x in ports.split(',')]
 
-		self.src = network.helpers.nic(self.target)
-		self.src_port = random.randint(1, 65536) if not src_port else src_port
+        self.src = network.helpers.nic(self.target)
+        self.src_port = random.randint(1, 65536) if not src_port else src_port
 
-		self.queue = helpers.QueueHandler(self.ports)
+        self.queue = helpers.QueueHandler(self.ports)
 
-	def _syn_scan(self):
+    def _syn_scan(self):
 
-		packets_sent = 0
+        packets_sent = 0
 
-		for port in self.queue:
+        while not self.event.is_set():
 
-			if sys.platform == 'win32':
+            for port in self.queue:
 
-				answers = sr1(IP(), verbose=0)
+                if port in self.results:
+                    continue
 
-			else:
+                if sys.platform != 'win32':
+                    
+                    ip_header = IPv46(dst=str(self.target))
+                    tcp_header = TCP(sport=self.src_port, dport=port, flags='S')
+                    
+                    if packet := sr1(ip_header / tcp_header, timeout=1, verbose=0):
 
-				if port in self.results:
-					continue
+                        if packet.haslayer(TCP) and packet[TCP].flags == 18:
 
-				packet = network.helpers.create_packet_syn(self.src, self.target, self.src_port, port)
+                            print(f'[INFO]: Port {port} is open')
 
-				try:
+                            if port not in self.results:
+                                self.results[port] = {'state': 'open', 'service': 'unknown'}
 
-					self.s.sendto(packet, (str(self.target), 0))
-					packets_sent += 1
+                else:
 
-				except Exception as e:
-					
-					print(f'[ERROR]: Failed to send SYN packet', e)
+                    if port in self.results:
+                        continue
 
-		return packets_sent
+                    packet = network.helpers.create_packet_syn(self.src, self.target, self.src_port, port)
 
-	def _listener(self):
+                    try:
 
-		while not self.event.is_set():
+                        self.s.sendto(packet, (str(self.target), 0))
+                        packets_sent += 1
 
-			read, write, error = select.select([self.s], [], [], 0)
+                    except Exception as e:
+                        
+                        print(f'[ERROR]: Failed to send SYN packet', e)
 
-			if read:
+            time.sleep(0.001)
 
-				data, addr = self.s.recvfrom(1024)
+        return packets_sent
 
-				ip = network.models.IPHeader(data[0:20])
-				tcp = network.models.TcpHeader(data[20:40])
+    def _listener(self):
 
-				if ip.src != self.target or tcp.dst_port != self.src_port:
-					continue
+        while not self.event.is_set():
 
-				if tcp.is_flags_set(network.Flags.RST):
-					continue
+            read, write, error = select.select([self.s], [], [], 0)
 
-				if tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
+            if read:
 
-					port = int(tcp.src_port)
-					service = 'unknown'
+                data, addr = self.s.recvfrom(1024)
 
-					print(f'[INFO]: Port {port} is open')
+                ip = network.models.IPHeader(data[0:20])
+                tcp = network.models.TcpHeader(data[20:40])
 
-					if port not in self.results:
+                if ip.src != self.target or tcp.dst_port != self.src_port:
+                    continue
 
-						self.results[port] = {'state': 'open', 'service': service}
+                if tcp.is_flags_set(network.Flags.RST):
+                    continue
 
-	def stop(self):
-		self.event.set()
+                if tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
 
-	def worker(self, timeout : int=3, retries : int=3):
+                    port = int(tcp.src_port)
 
-		for retry in range(retries):
+                    print(f'[INFO]: Port {port} is open')
 
-			packets_sent = self._syn_scan()
-			if packets_sent == 0:
-				continue
+                    if port not in self.results:
 
-			time.sleep(timeout)
-			self.queue.reset()
+                        self.results[port] = {'state': 'open', 'service': 'unknown  '}
 
-			print(f'[INFO]: Attempt {retry}')
+    def stop(self):
+        self.event.set()
 
-		self.event.set()
+    def worker(self, timeout : int=3, retries : int=3):
 
-		return self.results
+        if sys.platform != 'win32':
 
-	def scan(self, timeout : int=3, retries : int=3, background : bool=False):
+            for tid in range(15):
 
-		if sys.platform != 'win32':
+                thread = threading.Thread(target=self._syn_scan)
+                thread.daemon = True
+                thread.start()
+                
+                self.threads.append(thread)
 
-			family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
-			
-			self.s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
-			self.s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+            i = 0
+            while i < 3:
 
-			self.listener_thread = threading.Thread(target=self._listener)
-			self.listener_thread.daemon = True
-			self.listener_thread.start()
+                if self.queue.queue.empty():
 
-		if background:
+                    print(f'[INFO]: Attempt {i+1}')
 
-			self.background_thread = threading.Thread(target=self.worker, args=[timeout, retries])
-			self.background_thread.daemon = True
-			self.background_thread.start()
+                    self.queue.reset()
+                    i += 1
 
-			return self.results
-		
-		else:
-			return self.worker(timeout, retries)
+                time.sleep(0.01)
+
+        else:
+
+            for retry in range(retries):
+
+                if self._syn_scan() == 0:
+                    continue
+
+                time.sleep(timeout)
+                self.queue.reset()
+
+                print(f'[INFO]: Attempt {retry+1}')
+
+        if self.queue.queue.empty():
+            self.event.set()
+
+        return self.results
+
+    def scan(self, timeout : int=3, retries : int=3, background : bool=False):
+
+        if sys.platform == 'win32':
+
+            family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
+            
+            self.s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
+            self.s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+
+            self.listener_thread = threading.Thread(target=self._listener)
+            self.listener_thread.daemon = True
+            self.listener_thread.start()
+
+        if background:
+
+            self.background_thread = threading.Thread(target=self.worker, args=[timeout, retries])
+            self.background_thread.daemon = True
+            self.background_thread.start()
+
+            return self.results
+        
+        else:
+            return self.worker(timeout, retries)
