@@ -1,6 +1,21 @@
-import ipaddress, socket, struct, random, re, os, netifaces, json
+import ipaddress, socket, struct, enum, re, os, netifaces, json
 
-def nic(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
+class Protocol(enum.Enum):
+	ARP = 0
+	ICMP = 1
+
+def nslookup(host : str, reverse : bool=False):
+
+	try:
+		if reverse:
+			return socket.getnameinfo((host, 0), 0)[0]
+		else:
+			return socket.getaddrinfo(host, 0)[0][4][0]
+	except Exception as e:
+		print(f'{"Reverse" if reverse else ""} nslookup failed to resolve {host}')
+
+
+def default_interface(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
 
 	gateways = netifaces.gateways()
 	default_gateway = gateways['default'][socket.AF_INET][0]
@@ -92,4 +107,21 @@ def create_packet_syn(src_addr : ipaddress._BaseAddress, dst_addr : ipaddress._B
 							 checksum, pointer)
 
 	return ip_header + tcp_header
-	
+
+def create_packet_icmp(src, dst):
+        
+        header = struct.pack('!bbHHh', 8, 0, 0, os.getpid() & 0xffff, 0)
+        packet = struct.unpack(f'!%dH' % (len(header) // 2), header)
+
+        checksum = sum(packet)
+        carry = checksum >> 16
+
+        while carry:
+            checksum = (checksum & 0xffff) + carry
+            carry = checksum & 0xff
+
+        checksum = ~checksum & 0xffff
+
+        packet = struct.pack('bbHHh', 8, 0, socket.htons(checksum), os.getpid() & 0xffff, 0)
+
+        return packet

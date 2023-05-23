@@ -3,8 +3,9 @@ import network
 
 def f_network(args):
 
-    port_scanner = network.PortScanner(args.target, ports=args.port)
-    result = port_scanner.scan(background=False)
+    #port_scanner = network.PortScanner(args.target, ports=args.port)
+    #result = port_scanner.scan(background=False)
+    pass
 
 def hashcrack(args):
     pass

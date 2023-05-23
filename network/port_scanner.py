@@ -17,10 +17,7 @@ class PortScanner:
         self._progress = 0
         self.retries = 0
 
-        if '/' in target:
-            self.target : ipaddress._BaseNetwork = network.helpers.is_valid_network(target)
-        else:
-            self.target : ipaddress._BaseAddress = network.helpers.is_valid_host(target)
+        self.target : ipaddress._BaseAddress = network.helpers.is_valid_host(target)
 
         if self.target == None:
             print(f'[ERROR]: Invalid target {target}')
@@ -32,7 +29,7 @@ class PortScanner:
         else:
             self.ports = [int(x) for x in ports.split(',')]
 
-        self.src = network.helpers.nic(self.target)
+        self.src = network.helpers.default_interface(self.target)
         self.src_port = random.randint(1, 65536) if not src_port else src_port
 
         self.queue = helpers.QueueHandler(self.ports)
@@ -97,6 +94,11 @@ class PortScanner:
             ip = network.models.IPHeader(data[0:20])
             tcp = network.models.TcpHeader(data[20:40])
 
+            # Skip if the SYN+ACK response was already received for this port
+            if tcp.src_port in self.results:
+                continue
+
+            # Filter out unwanted traffic
             if ip.src != self.target or tcp.dst_port != self.src_port:
                 continue
 
@@ -108,9 +110,7 @@ class PortScanner:
                 port = int(tcp.src_port)
 
                 print(f'[INFO]: Port {port} is open')
-
-                if port not in self.results:
-                    self.results[port] = {'state': 'open', 'service': 'unknown  '}
+                self.results[port] = {'state': 'open', 'service': 'unknown  '}
 
     def stop(self):
         self.event.set()
