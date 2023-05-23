@@ -82,7 +82,7 @@ class TcpHeader:
                             (5 << 4) + 0,
                             self._flags,
                             self._window,
-                            checksum,
+                            self._checksum,
                             self._pointer)
 
             psh = struct.pack('!4s4sBBH',
