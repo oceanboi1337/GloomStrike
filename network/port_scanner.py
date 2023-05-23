@@ -68,7 +68,22 @@ class PortScanner:
 
                 else:
 
-                    packet = network.helpers.create_packet_syn(self.src, self.target, self.src_port, port)
+                    ip = network.models.IPHeader()
+                    ip.version = 4
+                    ip.length = 0x28
+                    ip.protocol = socket.IPPROTO_TCP
+                    ip.ttl = 255
+                    ip.identifier = os.getpid() & 0xffff
+                    ip._src = self.src.packed
+                    ip._dst = self.target.packed
+
+                    tcp = network.models.TcpHeader(ip=ip)
+                    tcp._src_port = self.src_port
+                    tcp._dst_port = port
+                    tcp._flags = network.Flags.SYN
+                    tcp._window = 5840
+
+                    packet = ip + tcp
 
                     try:
 
