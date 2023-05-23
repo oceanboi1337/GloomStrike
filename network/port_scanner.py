@@ -1,7 +1,7 @@
 import ipaddress, threading, network, socket, sys, select, time, random, logging
 import helpers
 from collections import defaultdict
-logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv4 - ipv6 mismatch warning bug
 from scapy.all import *
 
 if sys.platform == 'win32':
@@ -43,8 +43,6 @@ class PortScanner:
 
     def _syn_scan(self):
 
-        packets_sent = 0
-
         while not self.event.is_set():
 
             for port in self.queue:
@@ -60,14 +58,14 @@ class PortScanner:
                     ip_header = IPv46(dst=str(self.target))
                     tcp_header = TCP(sport=self.src_port, dport=port, flags='S')
                     
-                    if packet := sr1(ip_header / tcp_header, timeout=1, verbose=0):
+                    if (packet := sr1(ip_header / tcp_header, timeout=1, verbose=0)) == None:
+                        continue
 
-                        if packet.haslayer(TCP) and packet[TCP].flags == 18:
+                    if packet.haslayer(TCP) and packet[TCP].flags == 18 and port not in self.results:
 
-                            print(f'[INFO]: Port {port} is open')
+                        print(f'[INFO]: Port {port} is open')
 
-                            if port not in self.results:
-                                self.results[port] = {'state': 'open', 'service': 'unknown'}
+                        self.results[port] = {'state': 'open', 'service': 'unknown'}
 
                 else:
 
@@ -76,42 +74,41 @@ class PortScanner:
                     try:
 
                         self.s.sendto(packet, (str(self.target), 0))
-
-                        time.sleep(0.00001)
                         self._progress += 1
 
                     except Exception as e:
-                        
                         print(f'[ERROR]: Failed to send SYN packet', e)
+
+                time.sleep(0.00001)
 
     def _listener(self):
 
         while not self.event.is_set():
 
             read, write, error = select.select([self.s], [], [], 0)
+            
+            if not read:
+                continue
 
-            if read:
+            data, addr = self.s.recvfrom(1024)
 
-                data, addr = self.s.recvfrom(1024)
+            ip = network.models.IPHeader(data[0:20])
+            tcp = network.models.TcpHeader(data[20:40])
 
-                ip = network.models.IPHeader(data[0:20])
-                tcp = network.models.TcpHeader(data[20:40])
+            if ip.src != self.target or tcp.dst_port != self.src_port:
+                continue
 
-                if ip.src != self.target or tcp.dst_port != self.src_port:
-                    continue
+            if tcp.is_flags_set(network.Flags.RST):
+                continue
 
-                if tcp.is_flags_set(network.Flags.RST):
-                    continue
+            if tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
 
-                if tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
+                port = int(tcp.src_port)
 
-                    port = int(tcp.src_port)
+                print(f'[INFO]: Port {port} is open')
 
-                    print(f'[INFO]: Port {port} is open')
-
-                    if port not in self.results:
-
-                        self.results[port] = {'state': 'open', 'service': 'unknown  '}
+                if port not in self.results:
+                    self.results[port] = {'state': 'open', 'service': 'unknown  '}
 
     def stop(self):
         self.event.set()
