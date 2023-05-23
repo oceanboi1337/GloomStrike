@@ -74,36 +74,38 @@ class TcpHeader:
 
         def pack(self):
 
-            packet = None
-            checksum = 0
+            tcp = struct.pack('!HHLLBBHHH',
+                            self.src_port,
+                            self.dst_port,
+                            self._sequence,
+                            self._ack,
+                            (5 << 4) + 0,
+                            self._flags,
+                            self._window,
+                            checksum,
+                            self._pointer)
 
-            for _ in range(2):
+            psh = struct.pack('!4s4sBBH',
+                            self.ip_header.src.packed,
+                            self.ip_header.dst.packed,
+                            0,
+                            socket.IPPROTO_TCP,
+                            0x14)
 
-                tcp = struct.pack('!HHLLBBHHH',
-                                self.src_port,
-                                self.dst_port,
-                                self._sequence,
-                                self._ack, (5 << 4) + 0,
-                                self._flags,
-                                self._window,
-                                checksum,
-                                self._pointer)
-                
-                if checksum:
+            checksum = network.helpers.calculate_checksum(psh + tcp)
 
-                    packet = tcp
-                    break
+            tcp = struct.pack('!HHLLBBHHH',
+                            self.src_port,
+                            self.dst_port,
+                            self._sequence,
+                            self._ack,
+                            (5 << 4) + 0,
+                            self._flags,
+                            self._window,
+                            checksum,
+                            self._pointer)
 
-                psh = struct.pack('!4s4sBBH',
-                                self.ip_header.src.packed,
-                                self.ip_header.dst.packed,
-                                0,
-                                socket.IPPROTO_TCP,
-                                0x14)
-
-                checksum = network.helpers.calculate_checksum(psh + tcp)
-
-            return packet
+            return tcp
 
         @property
         def src_port(self):
