@@ -14,6 +14,8 @@ class PortScanner:
         self.threads = []
         self.results = {}
         self.event = threading.Event()
+        self._progress = 0
+        self.retries = 0
 
         if '/' in target:
             self.target : ipaddress._BaseNetwork = network.helpers.is_valid_network(target)
@@ -35,6 +37,10 @@ class PortScanner:
 
         self.queue = helpers.QueueHandler(self.ports)
 
+    @property
+    def progress(self) -> int:
+        return int((self._progress / ((self.queue.queue.maxsize * self.retries) - len(self.results))) * 100)
+
     def _syn_scan(self):
 
         packets_sent = 0
@@ -42,6 +48,9 @@ class PortScanner:
         while not self.event.is_set():
 
             for port in self.queue:
+
+                if self.event.is_set():
+                    break
 
                 if port in self.results:
                     continue
@@ -62,23 +71,18 @@ class PortScanner:
 
                 else:
 
-                    if port in self.results:
-                        continue
-
                     packet = network.helpers.create_packet_syn(self.src, self.target, self.src_port, port)
 
                     try:
 
                         self.s.sendto(packet, (str(self.target), 0))
-                        packets_sent += 1
+
+                        time.sleep(0.00001)
+                        self._progress += 1
 
                     except Exception as e:
                         
                         print(f'[ERROR]: Failed to send SYN packet', e)
-
-            time.sleep(0.001)
-
-        return packets_sent
 
     def _listener(self):
 
@@ -112,48 +116,36 @@ class PortScanner:
     def stop(self):
         self.event.set()
 
-    def worker(self, timeout : int=3, retries : int=3):
+    def worker(self):
 
-        if sys.platform == 'win32':
+        for _ in range(15 if sys.platform == 'win32' else 1):
 
-            for tid in range(15):
+            thread = threading.Thread(target=self._syn_scan)
+            thread.daemon = True
+            thread.start()
+            
+            self.threads.append(thread)
 
-                thread = threading.Thread(target=self._syn_scan)
-                thread.daemon = True
-                thread.start()
-                
-                self.threads.append(thread)
+        i = 0
+        while i < self.retries:
 
-            i = 0
-            while i < 3:
+            if self.queue.queue.empty():
 
-                if self.queue.queue.empty():
-
-                    print(f'[INFO]: Attempt {i+1}')
-
-                    self.queue.reset()
-                    i += 1
-
-                time.sleep(0.01)
-
-        else:
-
-            for retry in range(retries):
-
-                if self._syn_scan() == 0:
-                    continue
-
-                time.sleep(timeout)
                 self.queue.reset()
+                i += 1
 
-                print(f'[INFO]: Attempt {retry+1}')
+            time.sleep(0.01)
 
-        if self.queue.queue.empty():
-            self.event.set()
+        self.event.set()
 
         return self.results
 
     def scan(self, timeout : int=3, retries : int=3, background : bool=False):
+
+        self.retries = retries
+        self.timeout = timeout
+
+        self.event.clear()
 
         if sys.platform != 'win32':
 
@@ -168,11 +160,11 @@ class PortScanner:
 
         if background:
 
-            self.background_thread = threading.Thread(target=self.worker, args=[timeout, retries])
+            self.background_thread = threading.Thread(target=self.worker)
             self.background_thread.daemon = True
             self.background_thread.start()
 
             return self.results
         
         else:
-            return self.worker(timeout, retries)
+            return self.worker()

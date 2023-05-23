@@ -1,17 +1,10 @@
-import argparse, json, sys, logging
+import argparse, json, sys, time
 import network
 
 def f_network(args):
 
     port_scanner = network.PortScanner(args.target, ports=args.port)
-
-    try:
-        result = port_scanner.scan(background=True)
-    except KeyboardInterrupt:
-        port_scanner.stop()
-
-    while 1:
-        print(json.dumps(port_scanner.results, indent=4))
+    result = port_scanner.scan(background=False)
 
 def hashcrack(args):
     pass
