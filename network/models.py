@@ -121,6 +121,7 @@ class TcpHeader:
 ip = IPHeader()
 ip.version = 4
 ip.length = 0x28
+ip.protocol = socket.IPPROTO_TCP
 ip.ttl = 255
 ip.identifier = os.getpid() & 0xffff
 ip._src = ipaddress.IPv4Address('192.168.1.189')
@@ -131,6 +132,5 @@ tcp._src_port = 1337
 tcp._dst_port = 80
 tcp._flags = Flags.SYN
 tcp._window = 5840
-tcp._window = 0x1337
 
 print((ip.pack() + tcp.pack()).hex())
