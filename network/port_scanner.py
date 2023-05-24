@@ -1,7 +1,5 @@
-import ipaddress, threading, network, socket, sys, select, time, random, logging
-import helpers
+import ipaddress, threading, network, socket, sys, select, time, random, logging, helpers
 from logger import Logger
-from collections import defaultdict
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv4 - ipv6 mismatch warning bug
 from scapy.all import sr1, IPv46, TCP, send
 
@@ -28,10 +26,7 @@ class PortScanner:
 
             self.ports = network.config.TOP_20_PORTS
 
-            for port in range(1, 65536):
-
-                if port not in self.ports:
-                    self.ports.append(port)
+            self.ports.extend(list(range(1, 65536)))
 
         else:
             self.ports = [int(x) for x in ports.split(',')]
@@ -54,56 +49,57 @@ class PortScanner:
 
     def _syn_scan(self):
 
-        while not self.event.is_set():
+        for port in self.queue:
 
-            for port in self.queue:
+            if self.event.is_set():
+                break
 
-                # Skip the port if it has already been scanned
-                if port in self.results:
-                    continue
+            # Skip the port if it has already been scanned
+            if port in self.results:
+                continue
 
-                for retry in range(self.retries):
+            for retry in range(self.retries):
 
-                    if sys.platform == 'win32':
-                        
-                        ip_header = IPv46(dst=str(self.target))
-                        syn = TCP(sport=self.src_port, dport=port, flags='S')
-                        fin = TCP(sport=self.src_port, dport=port, flags='F')
+                if sys.platform == 'win32':
+                    
+                    ip_header = IPv46(dst=str(self.target))
+                    syn = TCP(sport=self.src_port, dport=port, flags='S')
+                    fin = TCP(sport=self.src_port, dport=port, flags='F')
 
-                        if (packet := sr1(ip_header / syn, timeout=(self.timeout / 1000) * (retry + 1), verbose=0)) != None \
-                        and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self.results:
+                    if (packet := sr1(ip_header / syn, timeout=(self.timeout / 1000) * (retry + 1), verbose=0)) != None \
+                    and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self.results:
 
-                            self.logger.info(f'Port {port} is open')
-                            self.results[port] = {'state': 'open', 'service': 'unknown'}
+                        self.logger.info(f'Port {port} is open')
+                        self.results[port] = {'state': 'open', 'service': 'unknown'}
 
-                            break
+                        break
 
-                    else:
+                else:
 
-                        ip = network.models.IPHeader()
-                        ip.version = 4
-                        ip.length = 0x28
-                        ip.protocol = socket.IPPROTO_TCP
-                        ip.ttl = 255
-                        ip.identifier = os.getpid() & 0xffff
-                        ip._src = self.src.packed
-                        ip._dst = self.target.packed
+                    ip = network.models.IPHeader()
+                    ip.version = 4
+                    ip.length = 0x28
+                    ip.protocol = socket.IPPROTO_TCP
+                    ip.ttl = 255
+                    ip.identifier = os.getpid() & 0xffff
+                    ip._src = self.src.packed
+                    ip._dst = self.target.packed
 
-                        tcp = network.models.TcpHeader(ip_header=ip)
-                        tcp._src_port = self.src_port
-                        tcp._dst_port = port
-                        tcp._flags = network.Flags.SYN
-                        tcp._window = 5840
+                    tcp = network.models.TcpHeader(ip_header=ip)
+                    tcp._src_port = self.src_port
+                    tcp._dst_port = port
+                    tcp._flags = network.Flags.SYN
+                    tcp._window = 5840
 
-                        packet = ip.pack() + tcp.pack()
+                    packet = ip.pack() + tcp.pack()
 
-                        try:
-                            self.s.sendto(packet, (str(self.target), 0))
-                        except Exception as e:
-                            self.logger.error(f'Failed to send SYN packet {e}')
+                    try:
+                        self.s.sendto(packet, (str(self.target), 0))
+                    except Exception as e:
+                        self.logger.error(f'Failed to send SYN packet {e}')
 
-                self._progress += 1
-                time.sleep(self.timeout / 1000)
+            self._progress += 1
+            time.sleep(self.timeout / 1000)
 
     def _listener(self):
 
@@ -163,14 +159,13 @@ class PortScanner:
             try:
 
                 if self.queue.queue.empty():
-
-                    time.sleep(2)
                     self.event.set()
 
                 time.sleep(1 / 1000)
 
             except KeyboardInterrupt:
                 self.event.set()
+                self.logger.warning('Stopping threads...')
 
         for thread in self.threads:
 
