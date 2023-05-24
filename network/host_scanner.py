@@ -17,9 +17,11 @@ class HostScanner:
 
         if not self.target:
             self.logger.error(f'Invalid target {target}')
-        
-        self.logger.info('Generating host list')
-        self.hosts = helpers.QueueHandler([host for host in self.target.hosts()])
+
+        if self.target != None:
+
+            self.logger.info('Generating host list')
+            self.hosts = helpers.QueueHandler([host for host in self.target.hosts()])
 
         try:
             self.s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
@@ -29,7 +31,7 @@ class HostScanner:
         #self.s.bind(('0.0.0.0', 0))
 
         self.ready = bool(
-            hasattr(self, 'target') and
+            self.target and
             hasattr(self, 's')
         )
 
