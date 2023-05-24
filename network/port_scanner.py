@@ -1,4 +1,4 @@
-import ipaddress, threading, network, socket, sys, select, time, random, logging, helpers
+import ipaddress, threading, network, socket, sys, select, time, random, logging, helpers, os
 from logger import Logger
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv4 - ipv6 mismatch warning bug
 from scapy.all import sr1, IPv46, TCP, send

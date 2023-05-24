@@ -25,8 +25,8 @@ def worker(results, hash, start, end):
         if word_hash == hash:
             results[hash] = word
 
-        if wordlist.tell() > end:
-            break
+        #if wordlist.tell() > end:
+        #    break
 
 class Hashcrack:
 
@@ -77,7 +77,7 @@ class Hashcrack:
         self.hash = self.hashes.readline().rstrip().decode()
         print(self.hash)
 
-        for cpus in range(1, 17):
+        for cpus in range(1, os.cpu_count()):
 
             self.wordlist.seek(0, 2)
 
@@ -105,6 +105,8 @@ class Hashcrack:
             for proc in self.processes:
                 proc.join()
                 self.processes.remove(proc)
+
+            time.sleep(5)
 
             print(f'Processes: {cpus}\nFile Processing Time: {round(time.time() - start_time, 2)} seconds\nResults: {self._results}')
 
