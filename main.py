@@ -1,30 +1,39 @@
 import argparse, json, sys, time, os, socket, ipaddress
 import network
+from logger import Logger
 
-def f_network(args):
+def f_network(args, logger):
 
     protocol = None
+
     if args.arp: protocol = network.Protocol.ARP
     elif args.icmp: protocol = network.Protocol.ICMP
 
     if args.port_scan:
 
-        port_scanner = network.PortScanner(args.target, ports=args.port)
-        port_scanner.scan(background=False)
+        port_scanner = network.PortScanner(args.target, args.port, logger=logger)
+
+        if port_scanner.ready:
+            port_scanner.scan(background=False)
+
+        return port_scanner.results
 
     if args.discovery:
 
-        host_scanner = network.HostScanner(args.target)
-        host_scanner.start(args.target, protocol, background=False)
+        host_scanner = network.HostScanner(args.target, logger=logger)
 
-        print(json.dumps(host_scanner.results, indent=4))
+        if host_scanner.ready:
+            host_scanner.start(protocol, background=False)
 
-def f_hashcrack(args):
+        return host_scanner.results
+
+def f_hashcrack(args, logger):
     pass
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', help='Sets verbosity level', default=0, type=int)
     parser.add_argument('-o', '--output', help='Choose output format', default='')
     parser.add_argument('-t', '--threads', help='Amount of threads to use')
 
@@ -46,11 +55,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    logger = Logger(verbose=args.verbose)
+
     if not args.module:
         parser.print_help()
         sys.exit(1)
 
     match args.module.lower():
 
-        case 'network': result = f_network(args)
-        case 'hashcrack': result = f_hashcrack(args)
+        case 'network': result = f_network(args, logger)
+        case 'hashcrack': result = f_hashcrack(args, logger)

@@ -25,6 +25,10 @@ def nslookup(host : ipaddress._IPAddressBase, reverse : bool=False):
             dns = DNS(rd=1, qd=DNSQR(qname=host.reverse_pointer, qtype='PTR'))
 
             response = sr1(ip / UDP() / dns, verbose=0, promisc=False)
+            
+            if DNSRR not in response[DNS]:
+                raise Exception()
+
             return response[DNS][DNSRR].rdata.decode()
             
         else:
@@ -32,7 +36,7 @@ def nslookup(host : ipaddress._IPAddressBase, reverse : bool=False):
             return socket.getaddrinfo(host, 0)[0][4][0]
         
     except Exception as e:
-        print(f'{"Reverse" if reverse else ""} nslookup failed to resolve "{host}"', e)
+        pass
 
 def ping(dst : ipaddress._IPAddressBase):
 
@@ -54,7 +58,6 @@ def ping(dst : ipaddress._IPAddressBase):
     icmp.id = os.getpid() & 0xffff
 
     s.sendto(ip.pack() + icmp.pack(), (str(dst), 0))
-    s.sendto(icmp.pack(), (str(dst), 0))
 
     start = time.time()
     data, addr = s.recvfrom(1024)
@@ -66,21 +69,24 @@ def avg_rtt(dst : ipaddress._IPAddressBase, rounds : int=10):
 
     total_rtt = 0
 
-    print(f'[INFO]: Calculating RTT Average...')
     for _ in range(rounds):
 
         total_rtt += ping(dst)
 
-    print(f'[INFO]: Average RTT: {total_rtt / rounds} ms')
+    return round((total_rtt / rounds) + 100, 2) # Average RTT + 100ms
 
-    return (total_rtt / rounds) + 100 # Average RTT + 100ms
+def default_interface(dst : ipaddress._IPAddressBase=None) -> ipaddress._IPAddressBase:
 
-def default_interface(dst : ipaddress._IPAddressBase) -> ipaddress._IPAddressBase:
+    family = socket.AF_INET
+    test_target = '1.1.1.1'
 
-    family = socket.AF_INET if dst.version == 4 else socket.AF_INET6
+    if dst:
+
+        family = socket.AF_INET if dst.version == 4 else socket.AF_INET6
+        test_target = str(dst)
 
     s = socket.socket(family, socket.SOCK_DGRAM)
-    s.connect((str(dst), 80))
+    s.connect((test_target, 80))
 
     return is_valid_host(s.getsockname()[0])
     
@@ -99,7 +105,7 @@ def is_valid_host(host : str):
                 addr = socket.getaddrinfo(host, 0)
                 return is_valid_host(addr[0][4][0])
             except Exception as e:
-                print(f'[ERROR]: Failed to resolve {host}', e)
+                return None
     
 def is_valid_network(network : str):
 

@@ -1,26 +1,25 @@
 import ipaddress, threading, network, socket, sys, select, time, random, logging
 import helpers
+from logger import Logger
 from collections import defaultdict
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv4 - ipv6 mismatch warning bug
-from scapy.all import *
-
-if sys.platform == 'win32':
-    from scapy.all import sr1, IPv46, TCP
+from scapy.all import sr1, IPv46, TCP
 
 class PortScanner:
 
-    def __init__(self, target : str, ports : str, src_port : int=None) -> None:
+    def __init__(self, target : str, ports : str, logger : Logger=None) -> None:
         
         self.threads = []
         self.results = {}
         self.event = threading.Event()
         self._progress = 0
         self.retries = 0
+        self.logger = logger
 
-        self.target : ipaddress._BaseAddress = network.helpers.is_valid_host(target)
-
-        if self.target == None:
-            print(f'[ERROR]: Invalid target {target}')
+        if valid_target := network.helpers.is_valid_host(target):
+            self.target : ipaddress._BaseAddress = valid_target
+        else:
+            self.logger.error(f'Invalid target "{target}"')
 
         if not ports:
             self.ports = [21, 22, 25, 53, 80, 110, 123, 443, 465, 631, 993, 995, 3306]
@@ -29,10 +28,17 @@ class PortScanner:
         else:
             self.ports = [int(x) for x in ports.split(',')]
 
-        self.src = network.helpers.default_interface(self.target)
-        self.src_port = random.randint(1, 65536) if not src_port else src_port
+        if hasattr(self, 'target'):
+
+            self.src = network.helpers.default_interface(self.target)
+            self.src_port = random.randint(1, 65536)
 
         self.queue = helpers.QueueHandler(self.ports)
+
+        self.ready = bool(
+            hasattr(self, 'target') and
+            hasattr(self, 'src')
+        )
 
     @property
     def progress(self) -> int:
@@ -56,7 +62,7 @@ class PortScanner:
                     if (packet := sr1(ip_header / tcp_header, timeout=self.timeout / 1000, verbose=0)) != None \
                     and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self.results:
 
-                        print(f'[INFO]: Port {port} is open')
+                        self.logger.info(f'Port {port} is open')
 
                         self.results[port] = {'state': 'open', 'service': 'unknown'}
 
@@ -82,7 +88,7 @@ class PortScanner:
                     try:
                         self.s.sendto(packet, (str(self.target), 0))
                     except Exception as e:
-                        print(f'[ERROR]: Failed to send SYN packet', e)
+                        self.logger.error(f'Failed to send SYN packet {e}')
 
                 self._progress += 1
                 time.sleep(self.timeout / 1000)
@@ -116,7 +122,7 @@ class PortScanner:
 
                 port = int(tcp.src_port)
 
-                print(f'[INFO]: Port {port} is open')
+                self.logger.info(f'Port {port} is open')
                 self.results[port] = {'state': 'open', 'service': 'unknown  '}
 
     def stop(self):
@@ -124,7 +130,13 @@ class PortScanner:
 
     def worker(self):
 
+        self.logger.info('Calculating Average RTT...')
+
         self.timeout = network.helpers.avg_rtt(self.target)
+
+        rtt = round(self.timeout - 100, 2)
+
+        self.logger.info(f'Average RTT: {rtt} ms')
 
         for _ in range(15 if sys.platform == 'win32' else 1):
 
@@ -139,7 +151,7 @@ class PortScanner:
 
             if self.queue.queue.empty():
 
-                print(f'[INFO]: Retry {i}')
+                self.logger.info(f'Retry attempt {i + 1}')
                 time.sleep((self.timeout / 1000) * 10)
                 self.queue.reset()
                 i += 1
