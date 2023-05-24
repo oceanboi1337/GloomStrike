@@ -6,12 +6,9 @@ def f_network(args):
     if args.port_scan:
 
         port_scanner = network.PortScanner(args.target, ports=args.port)
-        result = port_scanner.scan(background=True)
+        port_scanner.scan(background=True)
 
-        while 1:
-            print(port_scanner.progress, port_scanner._progress, (port_scanner.queue.queue.maxsize * port_scanner.retries) - len(port_scanner.results))
-            time.sleep(1)
-            pass
+        return 
 
     pass
 

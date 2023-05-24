@@ -36,7 +36,7 @@ class PortScanner:
 
     @property
     def progress(self) -> int:
-        return round((self._progress / ((self.queue.queue.maxsize * self.retries) - len(self.results)) * 100), 2)
+        return round((self._progress / ((self.queue.queue.maxsize * self.retries) + len(self.results) + 1)) * 100)
 
     def _syn_scan(self):
 
@@ -50,7 +50,6 @@ class PortScanner:
 
                 # Skip the port if it has already been scanned
                 if port in self.results:
-                    self._progress += 1
                     continue
 
                 if sys.platform == 'win32':
@@ -148,13 +147,14 @@ class PortScanner:
 
             if self.queue.queue.empty():
 
-                time.sleep(self.timeout)
+                print(f'[INFO]: Retry {i}')
+                time.sleep((self.timeout / 1000) * 10)
                 self.queue.reset()
                 i += 1
 
             time.sleep(0.001)
 
-        time.sleep(10)
+        time.sleep(self.timeout)
 
         return self.results
 
