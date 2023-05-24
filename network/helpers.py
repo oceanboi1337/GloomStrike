@@ -1,19 +1,38 @@
-import ipaddress, socket, struct, enum, re, os, socket, time
+import ipaddress, socket, struct, enum, re, os, socket, time, sys, requests
 from network import models
+from scapy.all import sr1, IP, UDP, DNS, DNSQR, DNSRR
+
 
 class Protocol(enum.Enum):
     ARP = 0
     ICMP = 1
 
-def nslookup(host : str, reverse : bool=False):
+def device_lookup(mac : str):
+    
+    r = requests.get(f'https://macvendors.com/query/{mac}')
 
-    try:
+    if r.status_code == 200:
+        return r.text if r.text != 'Not Found' else None
+    
+
+def nslookup(host : ipaddress._IPAddressBase, reverse : bool=False):
+
+    try: 
+
         if reverse:
-            return socket.getnameinfo((host, 0), 0)[0]
+
+            ip = IP(dst='192.168.1.1')
+            dns = DNS(rd=1, qd=DNSQR(qname=host.reverse_pointer, qtype='PTR'))
+
+            response = sr1(ip / UDP() / dns, verbose=0, promisc=False)
+            return response[DNS][DNSRR].rdata.decode()
+            
         else:
+
             return socket.getaddrinfo(host, 0)[0][4][0]
+        
     except Exception as e:
-        print(f'{"Reverse" if reverse else ""} nslookup failed to resolve {host}')
+        print(f'{"Reverse" if reverse else ""} nslookup failed to resolve "{host}"', e)
 
 def ping(dst : ipaddress._IPAddressBase):
 
@@ -34,9 +53,8 @@ def ping(dst : ipaddress._IPAddressBase):
     icmp.code = 0
     icmp.id = os.getpid() & 0xffff
 
-    packet = ip.pack() + icmp.pack()
-
-    s.sendto(packet, (str(dst), 0))
+    s.sendto(ip.pack() + icmp.pack(), (str(dst), 0))
+    s.sendto(icmp.pack(), (str(dst), 0))
 
     start = time.time()
     data, addr = s.recvfrom(1024)
@@ -48,9 +66,12 @@ def avg_rtt(dst : ipaddress._IPAddressBase, rounds : int=10):
 
     total_rtt = 0
 
+    print(f'[INFO]: Calculating RTT Average...')
     for _ in range(rounds):
 
         total_rtt += ping(dst)
+
+    print(f'[INFO]: Average RTT: {total_rtt / rounds} ms')
 
     return (total_rtt / rounds) + 100 # Average RTT + 100ms
 

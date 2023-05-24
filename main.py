@@ -3,14 +3,21 @@ import network
 
 def f_network(args):
 
+    protocol = None
+    if args.arp: protocol = network.Protocol.ARP
+    elif args.icmp: protocol = network.Protocol.ICMP
+
     if args.port_scan:
 
         port_scanner = network.PortScanner(args.target, ports=args.port)
-        port_scanner.scan(background=True)
+        port_scanner.scan(background=False)
 
-        return 
+    if args.discovery:
 
-    pass
+        host_scanner = network.HostScanner(args.target)
+        host_scanner.start(args.target, protocol, background=False)
+
+        print(json.dumps(host_scanner.results, indent=4))
 
 def f_hashcrack(args):
     pass
