@@ -1,8 +1,10 @@
 # TODO List
 ## Features
 * 🚧 Argument Parsing
+    * ✅ Network Mapper
 * ✅ Network Mapper
     * ✅ SYN Port Scanner
+    * ✅ ICMP Port Scanning
     * ✅ Background Threading
     * ✅ Windows Support
     * ✅ Linux Support
