@@ -11,14 +11,14 @@ class Logger:
     def __init__(self, verbose : Level) -> None:
         self.verbose = verbose
 
-    def info(self, string):
+    def info(self, string, esc : str='', newline : bool=True):
         if self.verbose >= Level.INFO:
-            print(f'{ansi.Color.Green}[INFO]: {string}{ansi.Color.Reset}')
+            print(f'{esc}{ansi.Color.Green}[INFO]: {string}{ansi.Color.Reset}', end='\n' if newline else '')
 
-    def warning(self, string):
+    def warning(self, string, esc : str='', newline : bool=True):
         if self.verbose >= Level.WARNING:
-            print(f'{ansi.Color.Yellow}[WARNING]: {string}{ansi.Color.Reset}')
+            print(f'{esc}{ansi.Color.Yellow}[WARNING]: {string}{ansi.Color.Reset}', end='\n' if newline else '')
     
-    def error(self, string):
+    def error(self, string, esc : str='', newline : bool=True):
         if self.verbose >= Level.WARNING:
-            print(f'{ansi.Color.Red}[ERROR]: {string}{ansi.Color.Reset}')
+            print(f'{esc}{ansi.Color.Red}[ERROR]: {string}{ansi.Color.Reset}', end='\n' if newline else '')
