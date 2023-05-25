@@ -1,4 +1,4 @@
-import argparse, sys, hashcrack, network, hashlib, time
+import argparse, sys, hashcrack, network, hashlib, time, fuzzer
 from logger import Logger
 
 def f_network(args, logger):
@@ -40,13 +40,18 @@ def f_hashcrack(args, logger):
     if cracker.load_hashes(args.f) and cracker.load_wordlist(args.w):
 
         return cracker.start(args.a, background=False)
+    
+def f_fuzzer(args, logger):
+
+    url_fuzzer = fuzzer.UrlFuzzer(args.target, args.wordlist, args.timeout, args.status_code, logger=logger)
+    url_fuzzer.start(threads=args.threads)
+
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', help='Sets verbosity level', default=0, type=int)
     parser.add_argument('-o', '--output', help='Choose output format', default='')
-    parser.add_argument('-t', '--threads', help='Amount of threads to use')
 
     subparsers = parser.add_subparsers(dest='module')
 
@@ -58,11 +63,18 @@ if __name__ == '__main__':
     p_network.add_argument('--icmp', help='ICMP scan for host discovery', action='store_true')
     p_network.add_argument('target', help='The target CIDR / Host to scan', type=str)
 
-    p_hashcrack = subparsers.add_parser('hashcrack', help='Enables the hashcrack module')
+    p_hashcrack = subparsers.add_parser('hashcrack', help='Enable the hashcrack module')
     p_hashcrack.add_argument('-f', help='Path to the file containing a list of hashes')
     p_hashcrack.add_argument('-w', help='Path to the wordlist')
     p_hashcrack.add_argument('-a', help='The hash type')
     p_hashcrack.add_argument('-al', help='List available hashing algorithms', action='store_true')
+
+    p_fuzzer = subparsers.add_parser('fuzzer', help='Enable the fuzzer module')
+    p_fuzzer.add_argument('-w', '--wordlist', help='Path to the wordlist', default='wordlists/dirs.txt')
+    p_fuzzer.add_argument('--threads', help='Amount of threads to use', default=25, type=int)
+    p_fuzzer.add_argument('-t', '--timeout', help='Timeout limit for a request (seconds)')
+    p_fuzzer.add_argument('-s', '--status-code', help='List of status codes to check for <200,404,401>')
+    p_fuzzer.add_argument('target', help='Target URL to fuzz')
 
     args = parser.parse_args()
 
@@ -76,3 +88,4 @@ if __name__ == '__main__':
 
         case 'network': result = f_network(args, logger)
         case 'hashcrack': result = f_hashcrack(args, logger)
+        case 'fuzzer': result = f_fuzzer(args, logger)

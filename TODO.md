@@ -12,7 +12,8 @@
     * ✅ Host Discovery
     * ✅ ARP Scanning
     * ✅ MAC Manufacturer Lookup
-* ❌ URL Fuzzer
+* 🚧 URL Fuzzer
 * ✅ Hash Cracker
+    * ✅ Multiprocessing
 * ❌ Login Checker
 * ❌ GUI
