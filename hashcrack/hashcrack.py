@@ -16,8 +16,6 @@ def worker(results, hash, start, end):
 
         word = word.rstrip()
 
-        #print(hash, word)
-
         m = hashlib.new('md5')
         m.update(word)
         word_hash = m.hexdigest()
@@ -25,8 +23,8 @@ def worker(results, hash, start, end):
         if word_hash == hash:
             results[hash] = word
 
-        #if wordlist.tell() > end:
-        #    break
+        if wordlist.tell() > end:
+            break
 
 class Hashcrack:
 
