@@ -142,7 +142,11 @@ class PortScanner:
 
         self.logger.info('Calculating Average RTT...')
 
-        self.timeout = network.helpers.avg_rtt(self.target)
+        try:
+            self.timeout = network.helpers.avg_rtt(self.target)
+        except PermissionError:
+            self.logger.error('Permission error while creating socket')
+            sys.exit(1)
 
         rtt = round(self.timeout - 100, 2)
 
