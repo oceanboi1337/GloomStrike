@@ -3,12 +3,14 @@ from logger import Logger
 
 def _worker(fileno, results, hash, start, end):
 
-    wordlist = mmap.mmap(fileno, 0, access=mmap.ACCESS_READ)
+    with open(fileno, 'r+b') as f:
 
-    if start > 256:
-        wordlist.seek(start - 256)
-    else:
-        wordlist.seek(start)
+        wordlist = mmap.mmap(fileno, 0, access=mmap.ACCESS_READ)
+
+        if start > 256:
+            wordlist.seek(start - 256)
+        else:
+            wordlist.seek(start)
 
     while word := wordlist.readline():
 
@@ -43,7 +45,6 @@ class Hashcrack:
         try:
 
             self.f = open(wordlist, 'r+b')
-            self.fileno = self.f.fileno()
                 
             self.wordlist = mmap.mmap(self.f.fileno(), 0, access=mmap.ACCESS_READ)
 
@@ -91,8 +92,7 @@ class Hashcrack:
 
             for tid in range(cpus):
 
-                proc = multiprocessing.Process(target=_worker, args=[self.fileno, self._results, self.hash, start, end])
-                proc.daemon = True
+                proc = multiprocessing.Process(target=_worker, args=[self.f.fileno(), self._results, self.hash, start, end])
                 proc.start()
 
                 start = int(end)
