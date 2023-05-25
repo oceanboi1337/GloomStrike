@@ -1,7 +1,9 @@
 import ipaddress, threading, network, socket, sys, select, time, random, logging, helpers, os
 from logger import Logger
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv4 - ipv6 mismatch warning bug
-from scapy.all import sr1, IPv46, TCP, send
+from scapy.all import sr1, IPv46, TCP
+
+TOP_20_PORTS=[80, 23, 443, 21, 22, 25, 3389, 110, 445, 139, 143, 53, 135, 3306, 8080, 1723, 111, 995, 993, 5900, 631, 161, 137, 123, 138, 1434, 445, 135, 67, 139, 500, 68, 520, 1900, 4500, 514, 49152, 162, 69]
 
 class PortScanner:
 
@@ -20,11 +22,11 @@ class PortScanner:
             self.logger.error(f'Invalid target "{target}"')
 
         if not ports:
-            self.ports = network.config.TOP_20_PORTS
+            self.ports = TOP_20_PORTS
 
         elif ports == '-':
 
-            self.ports = network.config.TOP_20_PORTS
+            self.ports = TOP_20_PORTS
 
             self.ports.extend(list(range(1, 65536)))
 

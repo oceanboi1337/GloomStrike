@@ -1,4 +1,4 @@
-import socket, threading, select, ipaddress, time, sys, network, helpers, os
+import socket, threading, select, time, network, helpers, os
 from logger import Logger
 
 from scapy.all import srp, Ether, ARP

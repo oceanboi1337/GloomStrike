@@ -1,4 +1,4 @@
-import struct, ipaddress, enum, network, os, socket
+import struct, ipaddress, enum, network, socket
 
 class Flags(enum.IntEnum):
     FIN = 0x1
