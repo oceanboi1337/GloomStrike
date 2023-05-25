@@ -7,10 +7,9 @@ def _worker(path, results, hashes, start, end):
 
         wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
-    done = False
     index = 0
 
-    while not done:
+    while 1:
 
         wordlist.seek(start)
 
@@ -28,6 +27,7 @@ def _worker(path, results, hashes, start, end):
             word_hash = m.hexdigest()
 
             if word_hash == hash:
+                
                 results[hash] = word
                 index += 1
                 break
