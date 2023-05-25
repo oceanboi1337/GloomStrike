@@ -1,16 +1,23 @@
 import mmap, hashlib, threading, time, multiprocessing, helpers, os
 from logger import Logger
 
-def _worker(path, results, hash, start, end):
+def _worker(path, results, hashes, start, end):
 
     with open(path, 'r+b') as f:
 
         wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
-        if start > 256:
-            wordlist.seek(start - 256)
-        else:
-            wordlist.seek(start)
+    done = False
+    index = 0
+
+    while not done:
+
+        wordlist.seek(start)
+
+        if index >= len(hashes):
+            break
+
+        hash = hashes[index].decode()
 
         while word := wordlist.readline():
 
@@ -22,9 +29,15 @@ def _worker(path, results, hash, start, end):
 
             if word_hash == hash:
                 results[hash] = word
+                index += 1
+                break
 
             if wordlist.tell() > end:
                 break
+
+        index += 1
+
+    wordlist.close()
 
 class Hashcrack:
 
@@ -32,23 +45,29 @@ class Hashcrack:
 
         self.db = db
         self.logger = logger
-        self.processes = []
-        self.hash = None
-        self.event = threading.Event()
+
+        self.processors = os.cpu_count() - 1
+        self.processes : list(multiprocessing.Process) = []
+
         self.manager = multiprocessing.Manager()
         self._results = self.manager.dict()
+        self._hashes = None
+
+        self._wordlist_size = 0
+        self._wordlist_path = None
 
     def load_wordlist(self, wordlist : str):
 
-        self.wordlist_path = wordlist
+        self._wordlist_path = wordlist
 
         try:
 
-            with open(wordlist, 'r+b') as f:
-                
-                self.wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+            with open(wordlist, 'rb') as f:
 
-            return True
+                f.seek(0, 2)
+                self._wordlist_size = f.tell()
+
+                return True
         
         except Exception as e:
 
@@ -59,51 +78,71 @@ class Hashcrack:
 
         try:
 
-            with open(hash_file, 'r+b') as f:
+            hashes = []
 
-                self.hashes = mmap.mmap(f.fileno(), 0)
+            with open(hash_file, 'rb') as f:
 
-            return True
-        
+                while line := f.readline():
+                    hashes.append(line.rstrip())
+
+            self._hashes = self.manager.list(hashes)
+
         except Exception as e:
-
-            self.logger.error(f'Failed to mmap() file {hash_file}')
-            return False
+            self.logger.error(f'Failed to load hashes: {e}')
 
     def crack(self):
 
-        self.hash = self.hashes.readline().rstrip().decode()
-        print(self.hash)
+        self.logger.info(f'Logical CPUs: {self.processors + 1}')
+        self.logger.info(f'Using {self.processors}')
 
-        for cpus in range(1, os.cpu_count()):
+        if self._wordlist_size <= 0 and len(self._hashes) > 0:
+            return False
 
-            self.wordlist.seek(0, 2)
+        increment = int(self._wordlist_size / self.processors)
 
-            #cpus = os.cpu_count()
-            file_size = self.wordlist.tell()
-            increment = int(file_size / cpus)
+        start = 0
+        end = int(increment)
 
-            self.wordlist.seek(0)
+        start_time = time.time()
 
-            start = 0
-            end = int(increment)
+        for pid in range(self.processors):
 
-            start_time = time.time()
+            proc = multiprocessing.Process(target=_worker, args=[self._wordlist_path, self._results, self._hashes, start, end])
+            proc.start()
 
-            for tid in range(cpus):
+            start = int(end) - 1024
+            end += int(increment)
 
-                proc = multiprocessing.Process(target=_worker, args=[self.wordlist_path, self._results, self.hash, start, end])
-                proc.start()
+            self.processes.append(proc)
 
-                start = int(end)
-                end += int(increment)
+            self.logger.info(f'Started {proc.name}')
 
-                self.processes.append(proc)
+        log_list = []
 
-            for proc in self.processes:
-                proc.join()
-                self.processes.remove(proc)
+        while 1:
 
-            print(f'Processes: {cpus}\nFile Processing Time: {round(time.time() - start_time, 2)} seconds\nResults: {self._results}')
+            for hash, word in self._results.items():
+
+                if hash in log_list:
+                    continue
+
+                self.logger.info(f'Cracked Hash in {round(time.time() - start_time, 2)} sec {hash} -> {word}')
+                log_list.append(hash)
+
+            if len([proc for proc in self.processes if proc.is_alive()]) == 0:
+                break
+
+            if len(self._results) == len(self._hashes):
+                break
+
+            time.sleep(1 / 1000)
+
+        self.logger.warning(f'Killing processes')
+
+        for proc in self.processes:
+            proc.join()
+            self.processes.remove(proc)
+
+        return self._results
 
         
