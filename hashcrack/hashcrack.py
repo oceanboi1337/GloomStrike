@@ -5,28 +5,26 @@ def _worker(fileno, results, hash, start, end):
 
     with open(fileno, 'r+b') as f:
 
-        wordlist = mmap.mmap(fileno, 0, access=mmap.ACCESS_READ)
+        wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
         if start > 256:
             wordlist.seek(start - 256)
         else:
             wordlist.seek(start)
 
-    while word := wordlist.readline():
+        while word := wordlist.readline():
 
-        word = word.rstrip()
+            word = word.rstrip()
 
-        m = hashlib.new('md5')
-        m.update(word)
-        word_hash = m.hexdigest()
+            m = hashlib.new('md5')
+            m.update(word)
+            word_hash = m.hexdigest()
 
-        if word_hash == hash:
-            results[hash] = word
+            if word_hash == hash:
+                results[hash] = word
 
-        if wordlist.tell() > end:
-            break
-
-    print('done')
+            if wordlist.tell() > end:
+                break
 
 class Hashcrack:
 
