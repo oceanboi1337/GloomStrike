@@ -1,4 +1,4 @@
-import argparse, sys, hashcrack, network
+import argparse, sys, hashcrack, network, hashlib, time
 from logger import Logger
 
 def f_network(args, logger):
@@ -28,10 +28,18 @@ def f_network(args, logger):
 
 def f_hashcrack(args, logger):
 
+    if args.al:
+
+        for algorithm in hashlib.algorithms_available:
+            print(algorithm)
+
+        return
+    
     cracker = hashcrack.Hashcrack(logger=logger)
-    cracker.load_hashes(args.f)
-    cracker.load_wordlist(args.w)
-    cracker.crack()
+
+    if cracker.load_hashes(args.f) and cracker.load_wordlist(args.w):
+
+        return cracker.start(args.a, background=False)
 
 if __name__ == '__main__':
 
@@ -54,6 +62,7 @@ if __name__ == '__main__':
     p_hashcrack.add_argument('-f', help='Path to the file containing a list of hashes')
     p_hashcrack.add_argument('-w', help='Path to the wordlist')
     p_hashcrack.add_argument('-a', help='The hash type')
+    p_hashcrack.add_argument('-al', help='List available hashing algorithms', action='store_true')
 
     args = parser.parse_args()
 
