@@ -2,6 +2,7 @@
 ## Features
 * 🚧 Argument Parsing
     * ✅ Network Mapper
+    * ✅ Hash Cracker
 * ✅ Network Mapper
     * ✅ SYN Port Scanner
     * ✅ ICMP Port Scanning
@@ -12,6 +13,6 @@
     * ✅ ARP Scanning
     * ✅ MAC Manufacturer Lookup
 * ❌ URL Fuzzer
-* ❌ Hash Cracker
+* ✅ Hash Cracker
 * ❌ Login Checker
 * ❌ GUI
