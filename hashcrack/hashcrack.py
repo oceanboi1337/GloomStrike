@@ -1,11 +1,18 @@
-import mmap, hashlib, threading, time, multiprocessing, helpers, os
+import mmap, hashlib, threading, time, multiprocessing, os, sys
 from logger import Logger
+
+def _worker(line):
+
+    print(line)
 
 def _worker(algorithm, path, results, hashes, start, end):
 
     with open(path, 'r+b') as f:
 
         wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+
+        if 'linux' in sys.platform:
+            wordlist.madvise(mmap.MADV_DONTNEED)
 
     index = 0
 
