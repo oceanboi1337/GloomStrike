@@ -1,9 +1,9 @@
 import mmap, hashlib, threading, time, multiprocessing, helpers, os
 from logger import Logger
 
-def _worker(fileno, results, hash, start, end):
+def _worker(path, results, hash, start, end):
 
-    with open(fileno, 'r+b') as f:
+    with open(path, 'r+b') as f:
 
         wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
@@ -40,11 +40,13 @@ class Hashcrack:
 
     def load_wordlist(self, wordlist : str):
 
+        self.wordlist_path = wordlist
+
         try:
 
-            self.f = open(wordlist, 'r+b')
+            with open(wordlist, 'r+b') as f:
                 
-            self.wordlist = mmap.mmap(self.f.fileno(), 0, access=mmap.ACCESS_READ)
+                self.wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
             return True
         
@@ -90,7 +92,7 @@ class Hashcrack:
 
             for tid in range(cpus):
 
-                proc = multiprocessing.Process(target=_worker, args=[self.f.fileno(), self._results, self.hash, start, end])
+                proc = multiprocessing.Process(target=_worker, args=[self.wordlist_path, self._results, self.hash, start, end])
                 proc.start()
 
                 start = int(end)
