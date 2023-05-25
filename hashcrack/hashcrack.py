@@ -1,16 +1,14 @@
 import mmap, hashlib, threading, time, multiprocessing, helpers, os
 from logger import Logger
 
-def worker(results, hash, start, end):
+def _worker(fileno, results, hash, start, end):
 
-    with open('wordlists/rockyou.txt', 'r+b') as f:
+    wordlist = mmap.mmap(fileno, 0, access=mmap.ACCESS_READ)
 
-        wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-
-        if start > 1024:
-            wordlist.seek(start - 1024)
-        else:
-            wordlist.seek(start)
+    if start > 256:
+        wordlist.seek(start - 256)
+    else:
+        wordlist.seek(start)
 
     while word := wordlist.readline():
 
@@ -25,6 +23,8 @@ def worker(results, hash, start, end):
 
         if wordlist.tell() > end:
             break
+
+    print('done')
 
 class Hashcrack:
 
@@ -42,11 +42,9 @@ class Hashcrack:
 
         try:
 
-            with open(wordlist, 'r+b') as f:
+            self.f = open(wordlist, 'r+b')
                 
-                self.wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-
-                f.close()
+            self.wordlist = mmap.mmap(self.f.fileno(), 0, access=mmap.ACCESS_READ)
 
             return True
         
@@ -92,7 +90,8 @@ class Hashcrack:
 
             for tid in range(cpus):
 
-                proc = multiprocessing.Process(target=worker, args=[self._results, self.hash, start, end])
+                proc = multiprocessing.Process(target=_worker, args=[self.f.fileno(), self._results, self.hash, start, end])
+                proc.daemon = True
                 proc.start()
 
                 start = int(end)
@@ -103,8 +102,6 @@ class Hashcrack:
             for proc in self.processes:
                 proc.join()
                 self.processes.remove(proc)
-
-            time.sleep(5)
 
             print(f'Processes: {cpus}\nFile Processing Time: {round(time.time() - start_time, 2)} seconds\nResults: {self._results}')
 
