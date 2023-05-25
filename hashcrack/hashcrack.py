@@ -36,7 +36,7 @@ def _worker(algorithm, path, results, hashes, start, end):
                 break
 
         index += 1
-
+        
     wordlist.close()
 
 class Hashcrack:
