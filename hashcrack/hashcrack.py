@@ -27,7 +27,7 @@ def _worker(path, results, hashes, start, end):
             word_hash = m.hexdigest()
 
             if word_hash == hash:
-                
+
                 results[hash] = word
                 index += 1
                 break
@@ -85,7 +85,8 @@ class Hashcrack:
                 while line := f.readline():
                     hashes.append(line.rstrip())
 
-            self._hashes = self.manager.list(hashes)
+            #self._hashes = self.manager.list(hashes)
+            self._hashes = hashes
 
         except Exception as e:
             self.logger.error(f'Failed to load hashes: {e}')
@@ -139,9 +140,14 @@ class Hashcrack:
 
         self.logger.warning(f'Killing processes')
 
+        self._results = dict(self._results)
+
         for proc in self.processes:
+
             proc.join()
             self.processes.remove(proc)
+
+        self.manager.shutdown()
 
         return self._results
 
