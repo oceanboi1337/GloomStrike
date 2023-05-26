@@ -13,6 +13,8 @@
     * ✅ ARP Scanning
     * ✅ MAC Manufacturer Lookup
 * 🚧 URL Fuzzer
+    * ✅ Multithreading
+    * 🚧 Recursive Fuzzing
 * ✅ Hash Cracker
     * ✅ Multiprocessing
 * ❌ Login Checker
