@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from typing import Any
 import queue
 
 class QueueHandler:
@@ -15,6 +16,10 @@ class QueueHandler:
 
         for item in self.items:
             self.queue.put(item)
+
+    def add(self, item : Any):
+        self.queue.put(item)
+        self.queue.maxsize += 1
 
     def get(self):
         try:

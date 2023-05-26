@@ -1,31 +1,57 @@
 import requests, threading, logger, helpers, time
+from collections import defaultdict
 
 class UrlFuzzer:
 
-    def __init__(self, target : str, wordlist : str, timeout : int=3, status_codes : list[int]=None, logger : logger.Logger=None) -> None:
+    def __init__(self, dirs : str, files : str, exts : str, logger : logger.Logger=None) -> None:
         
-        self._target = target
-        self._wordlist = wordlist
-        self._timeout = timeout
+        self._dirs = dirs
+        self._files = files
+        self._exts = exts
+
         self._logger = logger
-        self._status_codes = status_codes
 
-        self._event = threading.Event()
-        self._threads : list[threading.Thread] = []
-        self._paths = []
-        self._results = []
+        self._handlers = {
+            '_dirs': helpers.QueueHandler([]),
+            '_files': helpers.QueueHandler([]),
+            '_exts': helpers.QueueHandler([])
+        }
 
-        if self._target[-1] != '/':
-            self._target += '/'
+    def _load(self):
 
-    def _worker(self):
-            
-        for path in self._paths:
+        for attr in ['_dirs', '_files', '_exts']:
+
+            if not hasattr(self, attr):
+                return False    
+
+            try:
+
+                with open(getattr(self, attr), 'r') as f:
+
+                    while line := f.readline().rstrip():
+
+                        print(line)
+                        self._handlers[attr].add(f.readline())
+
+            except Exception as e:
+                print(e)
+        
+        return True
+        
+    def _fuzzer(self, target : str):
+
+        for dir in self._handlers['_dirs']:
+
+            url = target + dir
+
+            print(url)
+
+        """for fuzz in queue:
+
+            url = target + fuzz
 
             if self._event.is_set():
                 break
-            
-            url = self._target + path
 
             try:
 
@@ -35,49 +61,14 @@ class UrlFuzzer:
                     self._logger.warning('Too many requests')
 
                 if resp.status_code not in [429, 404]:
-                    self._logger.info(f'Found {self._target}{path}')
+                    self._add_result(target, url)
 
             except Exception as e:
-                self._logger.error(url, e)
+                self._logger.error(url, e)"""
 
-    def start(self, threads : int=25, background : bool=False):
+    def start(self, target : str, threads : int=25, background : bool=False):
 
-        lines = []
-
-        with open(self._wordlist, 'r+b') as f:
-
-            while line := f.readline():
-
-                lines.append(line.rstrip().decode())
-
-        self._paths = helpers.QueueHandler(lines)
-
-        self._logger.info('Starting threads...')
-
-        for tid in range(threads):
-
-            thread = threading.Thread(target=self._worker)
-            thread.setDaemon = True
-            thread.start()
-
-            self._threads.append(thread)
-
-        if background:
-            return True
-
-        while not self._event.is_set():
-
-            try:
-
-                if self._paths.queue.empty():
-                    self._event.set()
-
-                time.sleep(1 / 1000)
-
-            except KeyboardInterrupt:
-                self._event.set()
-
-        for thread in self._threads:
-            thread.join()
-
-        return self._results
+        if not self._load():
+            return False
+        
+        self._fuzzer(target)
