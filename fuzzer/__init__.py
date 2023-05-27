@@ -1,1 +1,0 @@
-from fuzzer.web import UrlFuzzer

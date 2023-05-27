@@ -1,0 +1,1 @@
+from gloomstrike.hashcrack.hashcrack import Hashcrack

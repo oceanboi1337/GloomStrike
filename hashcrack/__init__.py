@@ -1,1 +1,0 @@
-from hashcrack.hashcrack import Hashcrack

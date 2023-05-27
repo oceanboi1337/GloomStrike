@@ -1,5 +1,5 @@
 import mmap, hashlib, threading, time, multiprocessing, os, sys
-from logger import Logger
+from gloomstrike import logger
 
 def _worker(line):
 
@@ -48,7 +48,7 @@ def _worker(algorithm, path, results, hashes, start, end):
 
 class Hashcrack:
 
-    def __init__(self, db : str=None, logger : Logger=None) -> None:
+    def __init__(self, db : str=None, logger : logger.Logger=None) -> None:
 
         self.db = db
         self.logger = logger

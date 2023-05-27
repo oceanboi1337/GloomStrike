@@ -1,5 +1,4 @@
-import ipaddress, threading, network, socket, sys, select, time, random, logging, helpers, os
-from logger import Logger
+import ipaddress, threading, network, socket, sys, select, time, random, logging, helpers, os, logger
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv4 - ipv6 mismatch warning bug
 from scapy.all import sr1, IPv46, TCP
 
@@ -7,19 +6,19 @@ TOP_20_PORTS=[80, 23, 443, 21, 22, 25, 3389, 110, 445, 139, 143, 53, 135, 3306, 
 
 class PortScanner:
 
-    def __init__(self, target : str, ports : str, logger : Logger=None) -> None:
+    def __init__(self, target : str, ports : str, logger : logger.Logger=None) -> None:
         
-        self.threads = []
-        self.results = {}
-        self.event = threading.Event()
+        self._threads = []
+        self._results = {}
+        self._event = threading.Event()
         self._progress = 0
-        self.retries = 0
-        self.logger = logger
+        self._retries = 0
+        self._logger = logger
 
         if valid_target := network.helpers.is_valid_host(target):
             self.target : ipaddress._BaseAddress = valid_target
         else:
-            self.logger.error(f'Invalid target "{target}"')
+            self._logger.error(f'Invalid target "{target}"')
 
         if not ports:
             self.ports = TOP_20_PORTS
@@ -38,7 +37,7 @@ class PortScanner:
             self.src = network.helpers.default_interface(self.target)
             self.src_port = random.randint(1, 65536)
 
-        self.queue = helpers.QueueHandler(self.ports)
+        self._queue = helpers.QueueHandler(self.ports)
 
         self.ready = bool(
             hasattr(self, 'target') and
@@ -47,20 +46,20 @@ class PortScanner:
 
     @property
     def progress(self) -> int:
-        return round((self._progress / self.queue.queue.maxsize) * 100, 2)
+        return round((self._progress / self._queue.queue.maxsize) * 100, 2)
 
     def _syn_scan(self):
 
-        for port in self.queue:
+        for port in self._queue:
 
-            if self.event.is_set():
+            if self._event.is_set():
                 break
 
             # Skip the port if it has already been scanned
-            if port in self.results:
+            if port in self._results:
                 continue
 
-            for retry in range(self.retries):
+            for retry in range(self._retries):
 
                 if sys.platform == 'win32':
                     
@@ -69,10 +68,10 @@ class PortScanner:
                     fin = TCP(sport=self.src_port, dport=port, flags='F')
 
                     if (packet := sr1(ip_header / syn, timeout=(self.timeout / 1000) * (retry + 1), verbose=0)) != None \
-                    and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self.results:
+                    and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self._results:
 
-                        self.logger.info(f'Port {port} is open')
-                        self.results[port] = {'state': 'open', 'service': 'unknown'}
+                        self._logger.info(f'Port {port} is open')
+                        self._results[port] = {'state': 'open', 'service': 'unknown'}
 
                         break
 
@@ -98,14 +97,14 @@ class PortScanner:
                     try:
                         self.s.sendto(packet, (str(self.target), 0))
                     except Exception as e:
-                        self.logger.error(f'Failed to send SYN packet {e}')
+                        self._logger.error(f'Failed to send SYN packet {e}')
 
             self._progress += 1
             time.sleep(self.timeout / 1000)
 
     def _listener(self):
 
-        while not self.event.is_set():
+        while not self._event.is_set():
 
             read, write, error = select.select([self.s], [], [], 0)
             
@@ -118,7 +117,7 @@ class PortScanner:
             tcp = network.models.TcpHeader(data[20:40])
 
             # Skip if the SYN+ACK response was already received for this port
-            if tcp.src_port in self.results:
+            if tcp.src_port in self._results:
                 continue
 
             # Filter out unwanted traffic
@@ -132,25 +131,25 @@ class PortScanner:
 
                 port = int(tcp.src_port)
 
-                self.logger.info(f'Port {port} is open')
-                self.results[port] = {'state': 'open', 'service': 'unknown  '}
+                self._logger.info(f'Port {port} is open')
+                self._results[port] = {'state': 'open', 'service': 'unknown  '}
 
     def stop(self):
-        self.event.set()
+        self._event.set()
 
     def worker(self):
 
-        self.logger.info('Calculating Average RTT...')
+        self._logger.info('Calculating Average RTT...')
 
         try:
             self.timeout = network.helpers.avg_rtt(self.target)
         except PermissionError:
-            self.logger.error('Permission error while creating socket')
+            self._logger.error('Permission error while creating socket')
             sys.exit(1)
 
         rtt = round(self.timeout - 100, 2)
 
-        self.logger.info(f'Average RTT: {rtt} ms')
+        self._logger.info(f'Average RTT: {rtt} ms')
 
         for _ in range(25 if sys.platform == 'win32' else 1):
 
@@ -158,33 +157,33 @@ class PortScanner:
             thread.daemon = True
             thread.start()
             
-            self.threads.append(thread)
+            self._threads.append(thread)
 
-        while not self.event.is_set():
+        while not self._event.is_set():
 
             try:
 
-                if self.queue.queue.empty():
-                    self.event.set()
+                if self._queue.length == 0:
+                    self._event.set()
 
                 time.sleep(1 / 1000)
 
             except KeyboardInterrupt:
-                self.event.set()
-                self.logger.warning('Stopping threads...')
+                self._event.set()
+                self._logger.warning('Stopping threads...')
 
-        for thread in self.threads:
+        for thread in self._threads:
 
             thread.join()
-            self.threads.remove(thread)
+            self._threads.remove(thread)
 
-        return self.results
+        return self._results
 
     def scan(self, retries : int=3, background : bool=False):
 
-        self.retries = retries
+        self._retries = retries
         
-        self.event.clear()
+        self._event.clear()
 
         if sys.platform != 'win32':
 
@@ -203,7 +202,7 @@ class PortScanner:
             self.background_thread.daemon = True
             self.background_thread.start()
 
-            return self.results
+            return self._results
         
         else:
             return self.worker()

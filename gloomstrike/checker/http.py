@@ -1,4 +1,5 @@
-import mmap, requests, helpers, logger, threading, time
+import mmap, requests, threading, time
+from gloomstrike import logger, helpers
 
 class Proxy:
 

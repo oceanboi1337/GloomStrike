@@ -1,1 +1,0 @@
-from checker.http import HttpChecker, Proxy

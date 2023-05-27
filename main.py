@@ -1,5 +1,5 @@
-import argparse, sys, hashcrack, network, hashlib, time, fuzzer, checker
-from logger import Logger
+import argparse, sys, hashlib
+from gloomstrike import hashcrack, network, fuzzer, checker, logger
 
 def f_network(args, logger):
 
@@ -15,7 +15,7 @@ def f_network(args, logger):
         if port_scanner.ready:
             port_scanner.scan(background=False)
 
-        return port_scanner.results
+        return port_scanner._results
 
     if args.discovery:
 
@@ -24,7 +24,7 @@ def f_network(args, logger):
         if host_scanner.ready:
             host_scanner.start(protocol, background=False)
 
-        return host_scanner.results
+        return host_scanner._results
 
 def f_hashcrack(args, logger):
 
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     p_fuzzer.add_argument('-d', '--dirs', help='Path to directories wordlist', default='wordlists/fuzzer/dirs/raft-large-directories-lowercase.txt')
     p_fuzzer.add_argument('-t', '--timeout', help='Timeout limit for a request <seconds>')
     p_fuzzer.add_argument('-s', '--status-code', help='List of status codes to check for <200,404,401>')
-    p_fuzzer.add_argument('--depth', help='Max recursive depth (Default 2)', default=2, type=int)
+    p_fuzzer.add_argument('--depth', help='Max recursive depth (Default 2)', default=0, type=int)
     p_fuzzer.add_argument('--threads', help='Amount of threads to use', default=25, type=int)
     p_fuzzer.add_argument('target', help='Target URL to fuzz')
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    logger = Logger(verbose=args.verbose)
+    _logger = logger.Logger(verbose=args.verbose)
 
     if not args.module:
 
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     match args.module.lower():
 
-        case 'network': result = f_network(args, logger)
-        case 'hashcrack': result = f_hashcrack(args, logger)
-        case 'fuzzer': result = f_fuzzer(args, logger)
-        case 'checker': result = f_checker(args, logger)
+        case 'network': result = f_network(args, _logger)
+        case 'hashcrack': result = f_hashcrack(args, _logger)
+        case 'fuzzer': result = f_fuzzer(args, _logger)
+        case 'checker': result = f_checker(args, _logger)

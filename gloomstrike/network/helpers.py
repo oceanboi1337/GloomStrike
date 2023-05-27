@@ -1,5 +1,5 @@
 import ipaddress, socket, struct, enum, re, os, socket, time, requests
-from network import models
+from gloomstrike.network import models
 from scapy.all import sr1, IP, UDP, DNS, DNSQR, DNSRR
 
 

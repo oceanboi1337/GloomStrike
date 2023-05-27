@@ -1,4 +1,5 @@
-import requests, threading, logger, helpers, time, random, time, json
+import requests, threading, time, time, json
+from gloomstrike import logger, helpers
 
 class UrlFuzzer:
 
@@ -10,7 +11,7 @@ class UrlFuzzer:
         self._logger = logger
 
         self._threads = []
-        self._results = {}
+        self._results = []
 
         self._targets = helpers.QueueHandler()
         self._session = requests.Session()
@@ -52,20 +53,49 @@ class UrlFuzzer:
 
         try:
 
-            resp = self._session.request(method, target, timeout=timeout)
+            resp = self._session.request(method, target, timeout=timeout, allow_redirects=False)
 
             match resp.status_code:
 
                 case 404:
                     return False
                 case 429:
-                    print(self._logger.warning('Too many requests'))
+                    self._logger.warning('Too many requests')
                     return False
                 
-            return resp.status_code, len(resp.text)
+            return resp
         
+        except requests.exceptions.ConnectionError as e:
+            self._logger.error('Connection refused')
+        except requests.exceptions.RetryError as e:
+            pass
+        except requests.exceptions.Timeout as e:
+            self._logger.error('Request timeout')
         except Exception as e:
             self._logger.error(e)
+
+    def _process_request(self, resp : requests.Response):
+
+        url = resp.url
+
+        size = len(resp.text)
+        location = resp.headers.get('Location')
+
+        ret = None
+
+        match resp.status_code:
+
+            case 301 | 302:
+                self._logger.warning(f'Code: {resp.status_code}\tSize: {size}\t\t{url} -> {location}')
+                self._results.append(location)
+                ret = location
+            case _:
+
+                self._logger.info(f'Code: {resp.status_code}\tSize: {size}\t\t{url}')
+                self._results.append(url)
+                ret = resp.url
+
+        return ret
 
     def _fuzzer(self, max_depth : int, threads : int):
 
@@ -90,10 +120,7 @@ class UrlFuzzer:
 
                 if resp := self._request(url):
 
-                    code, size = resp
-
-                    self._results[target] = file
-                    self._logger.info(f'Code: {code}\tSize: {size}\t\t{url}')
+                    self._process_request(resp)
 
             #self._handlers['_files'].reset()
 
@@ -102,19 +129,15 @@ class UrlFuzzer:
                 if self._event.is_set():
                     break
 
-                url = target + dir + '/'
+                url = target + dir
 
                 #print(url)
 
                 if resp := self._request(url):
 
-                    code, size = resp
+                    if location := self._process_request(resp):
 
-                    self._results[target] = file
-                    self._logger.info(f'Code: {code}\tSize: {size}\t\t{url}')
-
-                    for _ in range(threads):
-                        self._targets.add(url)
+                        self._targets.add(location)
 
             time.sleep(3) # Bad temporary fix
 

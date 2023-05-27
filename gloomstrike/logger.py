@@ -1,4 +1,5 @@
-import enum, ansi
+import enum
+from gloomstrike import ansi
 
 class Level(enum.IntEnum):
     

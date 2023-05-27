@@ -12,14 +12,15 @@ class QueueHandler:
 
         if items != None:
 
-            self._length = len(self.items)
+            self._length = len(self._items)
             self._queue = queue.Queue(maxsize=len(self._items))
 
-            for item in self.items:
+            for item in self._items:
                 self._queue.put(item)
 
         else:
-            self.queue = queue.Queue()
+            self._items = []
+            self._queue = queue.Queue()
 
     @property
     def length(self):
@@ -27,17 +28,18 @@ class QueueHandler:
 
     def reset(self):
         
-        if not self.queue.empty():
+        if not self._queue.empty():
             return False
 
-        for item in self.items:
+        for item in self._items:
             self.add(item)
 
     def add(self, item, timeout: int = None):
 
         try:
 
-            self.queue.put(item, block=True, timeout=timeout)
+            self._queue.put(item, block=True, timeout=timeout)
+            self._items.append(item)
             self._length += 1
             
             return True
@@ -52,9 +54,9 @@ class QueueHandler:
         try:
 
             if self._mutex.locked():
-                item = self.queue.get(block=True)
+                item = self._queue.get(block=True)
 
-            item = self.queue.get(block=True, timeout=timeout)
+            item = self._queue.get(block=True, timeout=timeout)
         
         except queue.Empty:
             raise StopIteration
