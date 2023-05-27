@@ -63,7 +63,7 @@ class UrlFuzzer:
                     print(self._logger.warning('Too many requests'))
                     return False
                 
-            return True
+            return resp.status_code, len(resp.text)
         
         except Exception as e:
             self._logger.error(e)
@@ -87,13 +87,16 @@ class UrlFuzzer:
 
                 url = target + file
 
-                if self._request(url):
+                #print(url)
+
+                if resp := self._request(url):
+
+                    code, size = resp
 
                     self._results[target] = file
-                    self._logger.info(f'Found file: {url}')
+                    self._logger.info(f'Code: {code}\tSize: {size}\t\t{url}')
 
-            if self._handlers['_files'].queue.empty():
-                self._handlers['_files'].reset()
+            #self._handlers['_files'].reset()
 
             for dir in self._handlers['_dirs']:
 
@@ -102,17 +105,38 @@ class UrlFuzzer:
 
                 url = target + dir + '/'
 
-                if self._request(url):
+                #print(url)
 
-                    self._logger.info(f'Found dir: {url}')
+                if resp := self._request(url):
+
+                    code, size = resp
+
+                    self._results[target] = file
+                    self._logger.info(f'Code: {code}\tSize: {size}\t\t{url}')
 
                     for _ in range(threads):
-                        self._targets.add(url + '/')
+                        self._targets.add(url)
 
-            if self._handlers['_dirs'].queue.empty():
-                self._handlers['_dirs'].reset()
+            time.sleep(3) # Bad temporary fix
 
-            max_depth += 1
+            self._handlers['_files'].reset()
+            self._handlers['_dirs'].reset()
+
+            depth += 1
+
+        self._logger.warning(f'Exiting thread ({threading.current_thread().native_id})')
+
+    def _worker(self):
+
+        while not self._event.is_set():
+
+            try:
+                time.sleep(1 / 1000)
+            except KeyboardInterrupt:
+                self._event.set()
+                break
+
+        return self._results
 
     def start(self, target : str, max_depth : int=2, threads : int=25, background : bool=False):
 
@@ -129,18 +153,14 @@ class UrlFuzzer:
 
             thread.start()
 
-        while 1:
-            #print(self._targets.queue.empty(), self._handlers['_dirs'].queue.empty(), self._handlers['_files'].queue.empty())
+        if background:
 
-            try:
-                time.sleep(1 / 1000)
-            except KeyboardInterrupt:
-                self._event.set()
-                break
+            self.background_thread = threading.Thread(target=self._worker)
+            self.background_thread.daemon = True
+            self.background_thread.start()
 
-        for thread in self._threads:
-            thread.join()
+            return True
 
-        #print(self._results)
+        else:
 
-        #self._fuzzer(max_depth)
+            return self._worker()

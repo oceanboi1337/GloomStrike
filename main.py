@@ -44,7 +44,7 @@ def f_hashcrack(args, logger):
 def f_fuzzer(args, logger):
 
     #url_fuzzer = fuzzer.UrlFuzzer(args.target, args.wordlist, args.timeout, args.status_code, logger=logger)
-    url_fuzzer = fuzzer.UrlFuzzer('wordlists/fuzzer/dirs/raft-large-directories-lowercase.txt', 'wordlists/fuzzer/files/common-files.txt', 'wordlists/fuzzer/extensions_common.txt', logger=logger)
+    url_fuzzer = fuzzer.UrlFuzzer(args.dirs, args.files, 'wordlists/fuzzer/extensions_common.txt', logger=logger)
     url_fuzzer.start(args.target, threads=args.threads)
 
 
@@ -71,11 +71,12 @@ if __name__ == '__main__':
     p_hashcrack.add_argument('-al', help='List available hashing algorithms', action='store_true')
 
     p_fuzzer = subparsers.add_parser('fuzzer', help='Enable the fuzzer module')
-    p_fuzzer.add_argument('-w', '--wordlist', help='Path to the wordlist')
-    p_fuzzer.add_argument('--threads', help='Amount of threads to use', default=25, type=int)
+    p_fuzzer.add_argument('-f', '--files', help='Path to files wordlist', default='wordlists/fuzzer/files/common-files.txt')
+    p_fuzzer.add_argument('-d', '--dirs', help='Path to directories wordlist', default='wordlists/fuzzer/dirs/raft-large-directories-lowercase.txt')
     p_fuzzer.add_argument('-t', '--timeout', help='Timeout limit for a request (seconds)')
     p_fuzzer.add_argument('-s', '--status-code', help='List of status codes to check for <200,404,401>')
-    p_fuzzer.add_argument('-d', '--depth', help='Max recursive depth (Default 2)', default=2, type=int)
+    p_fuzzer.add_argument('--depth', help='Max recursive depth (Default 2)', default=2, type=int)
+    p_fuzzer.add_argument('--threads', help='Amount of threads to use', default=25, type=int)
     p_fuzzer.add_argument('target', help='Target URL to fuzz')
 
     args = parser.parse_args()

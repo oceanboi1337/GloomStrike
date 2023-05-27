@@ -4,9 +4,10 @@ import queue, threading
 
 class QueueHandler:
 
-    def __init__(self, items : Iterable[any]=None, max_size : int=0) -> None:
+    def __init__(self, items : Iterable[any]=None, max_size : int=0, infinite : bool=False) -> None:
 
         self.items = items
+        self.infinite = infinite
         self.mutex = threading.Lock()
 
         if items != None:
@@ -21,6 +22,9 @@ class QueueHandler:
 
     def reset(self):
         
+        if not self.queue.empty():
+            return False
+
         for item in self.items:
             self.queue.put(item)
 
@@ -30,8 +34,24 @@ class QueueHandler:
     def get(self, timeout : int=3):
 
         try:
+
+            if self.mutex.locked():
+
+                return self.queue.get(block=True)
+            
             return self.queue.get(block=True, timeout=timeout)
+        
         except queue.Empty:
+
+            if self.infinite:
+
+                self.mutex.acquire()
+
+                self.reset()
+
+                self.mutex.release()
+
+
             raise StopIteration
     
     def __iter__(self):
