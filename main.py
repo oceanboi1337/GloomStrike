@@ -1,4 +1,4 @@
-import argparse, sys, hashcrack, network, hashlib, time, fuzzer
+import argparse, sys, hashcrack, network, hashlib, time, fuzzer, checker
 from logger import Logger
 
 def f_network(args, logger):
@@ -48,6 +48,18 @@ def f_fuzzer(args, logger):
     url_fuzzer.start(args.target, threads=args.threads)
 
 
+def f_checker(args, logger):
+
+    if not ',' in args.param:
+        logger.error(f'Invalid argument {args.param}')
+
+    parameters = args.param.split(',')
+
+    http_checker = checker.HttpChecker(args.target, args.csrf, parameters, logger)
+
+    if http_checker.load(args.wordlist, args.proxies):
+        http_checker.start(threads=args.threads)
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -73,22 +85,32 @@ if __name__ == '__main__':
     p_fuzzer = subparsers.add_parser('fuzzer', help='Enable the fuzzer module')
     p_fuzzer.add_argument('-f', '--files', help='Path to files wordlist', default='wordlists/fuzzer/files/common-files.txt')
     p_fuzzer.add_argument('-d', '--dirs', help='Path to directories wordlist', default='wordlists/fuzzer/dirs/raft-large-directories-lowercase.txt')
-    p_fuzzer.add_argument('-t', '--timeout', help='Timeout limit for a request (seconds)')
+    p_fuzzer.add_argument('-t', '--timeout', help='Timeout limit for a request <seconds>')
     p_fuzzer.add_argument('-s', '--status-code', help='List of status codes to check for <200,404,401>')
     p_fuzzer.add_argument('--depth', help='Max recursive depth (Default 2)', default=2, type=int)
     p_fuzzer.add_argument('--threads', help='Amount of threads to use', default=25, type=int)
     p_fuzzer.add_argument('target', help='Target URL to fuzz')
+
+    p_checker = subparsers.add_parser('checker', help='Enable the checker module')
+    p_checker.add_argument('-w', '--wordlist', help='Path to the wordlist containing the logins <username:password>')
+    p_checker.add_argument('-p', '--proxies', help='Path to the proxylist <protocol:endpoint:port>', default=None)
+    p_checker.add_argument('--csrf', help='HTML <input name="X"> tag which is used for CSRF protection <X>', default=None)
+    p_checker.add_argument('--threads', help='Thread amount to use', default=10, type=int)
+    p_checker.add_argument('target', help='Target URL to check logins for')
+    p_checker.add_argument('--param', help='HTTP parameters to fill <username,password>', default='username,password')
 
     args = parser.parse_args()
 
     logger = Logger(verbose=args.verbose)
 
     if not args.module:
+
         parser.print_help()
-        sys.exit(1)
+        sys.exit(0)
 
     match args.module.lower():
 
         case 'network': result = f_network(args, logger)
         case 'hashcrack': result = f_hashcrack(args, logger)
         case 'fuzzer': result = f_fuzzer(args, logger)
+        case 'checker': result = f_checker(args, logger)

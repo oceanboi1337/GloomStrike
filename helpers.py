@@ -1,24 +1,29 @@
 from collections.abc import Iterable
-from typing import Any
 import queue, threading
 
 class QueueHandler:
 
-    def __init__(self, items : Iterable[any]=None, max_size : int=0, infinite : bool=False) -> None:
+    def __init__(self, items: list = None, max_size: int = 0) -> None:
 
-        self.items = items
-        self.infinite = infinite
-        self.mutex = threading.Lock()
+        self._items = items
+        self._length = 0
+
+        self._mutex = threading.Lock()
 
         if items != None:
 
-            self.queue = queue.Queue(maxsize=max_size)
+            self._length = len(self.items)
+            self._queue = queue.Queue(maxsize=len(self._items))
 
             for item in self.items:
-                self.queue.put(item)
+                self._queue.put(item)
 
         else:
             self.queue = queue.Queue()
+
+    @property
+    def length(self):
+        return self._length
 
     def reset(self):
         
@@ -26,33 +31,36 @@ class QueueHandler:
             return False
 
         for item in self.items:
-            self.queue.put(item)
+            self.add(item)
 
-    def add(self, item : Any):
-        self.queue.put(item)
-
-    def get(self, timeout : int=3):
+    def add(self, item, timeout: int = None):
 
         try:
 
-            if self.mutex.locked():
-
-                return self.queue.get(block=True)
+            self.queue.put(item, block=True, timeout=timeout)
+            self._length += 1
             
-            return self.queue.get(block=True, timeout=timeout)
+            return True
+        
+        except queue.Full as e:
+            return False
+
+    def get(self, timeout : int=3):
+
+        item = None
+
+        try:
+
+            if self._mutex.locked():
+                item = self.queue.get(block=True)
+
+            item = self.queue.get(block=True, timeout=timeout)
         
         except queue.Empty:
-
-            if self.infinite:
-
-                self.mutex.acquire()
-
-                self.reset()
-
-                self.mutex.release()
-
-
             raise StopIteration
+        
+        self._length -= 1
+        return item
     
     def __iter__(self):
         return self
