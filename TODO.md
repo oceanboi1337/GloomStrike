@@ -3,6 +3,7 @@
 * 🚧 Argument Parsing
     * ✅ Network Mapper
     * ✅ Hash Cracker
+    * ✅ URL Fuzzer
 * ✅ Network Mapper
     * ✅ SYN Port Scanner
     * ✅ ICMP Port Scanning
@@ -12,10 +13,11 @@
     * ✅ Host Discovery
     * ✅ ARP Scanning
     * ✅ MAC Manufacturer Lookup
-* 🚧 URL Fuzzer
+* ✅ URL Fuzzer
     * ✅ Multithreading
-    * 🚧 Recursive Fuzzing
+    * ✅ Recursive Fuzzing
 * ✅ Hash Cracker
     * ✅ Multiprocessing
-* ❌ Login Checker
+* 🚧 Login Checker
+    * 🚧 Multithreading
 * ❌ GUI
