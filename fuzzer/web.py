@@ -1,5 +1,4 @@
 import requests, threading, logger, helpers, time, random, time, json
-from collections import defaultdict
 
 class UrlFuzzer:
 
@@ -131,8 +130,21 @@ class UrlFuzzer:
         while not self._event.is_set():
 
             try:
+
+                for thread in self._threads:
+
+                    if not thread.is_alive():
+
+                        thread.join()
+                        self._threads.remove(thread)
+
+                    if len(self._threads) == 0:
+                        self._event.set()
+
                 time.sleep(1 / 1000)
+
             except KeyboardInterrupt:
+
                 self._event.set()
                 break
 
