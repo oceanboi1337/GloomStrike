@@ -12,13 +12,15 @@ class Proxy:
 
 class HttpChecker:
 
-    def __init__(self, url: str, params: str, csrf: str=None, logger: logger.Logger=None) -> None:
+    def __init__(self, url: str, params: str, csrf: str=None, csrf_url: str=None, logger: logger.Logger=None) -> None:
 
         self._url = url
-        self._csrf = csrf
         self._params = params
+        self._csrf = csrf
+        self._csrf_url = csrf
         self._logger = logger
-
+        
+        self._session = requests.Session()
         self._credentials = helpers.QueueHandler()
         self._event = threading.Event()
 
@@ -119,10 +121,24 @@ class HttpChecker:
                 
         return data
 
+    def _get_csrf(self):
+    
+        resp = self._session.get(self._csrf_url)
+
+        print(resp.text)
+
+        return resp
+
     def _check(self, url: str, username: str, password: str) -> bool:
 
         params = self._params.replace('$USERNAME', username)
         params = params.replace('$PASSWORD', password)
+        
+        if self._csrf:
+
+            csrf = self._get_csrf(url)
+
+            params = params.replace('')
 
         data = self._parse_params(params)
 

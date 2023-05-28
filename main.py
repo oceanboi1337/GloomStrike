@@ -1,7 +1,7 @@
 import argparse, sys, hashlib
 from gloomstrike import hashcrack, network, fuzzer, checker, logger
 
-def f_network(args, logger):
+def f_network(args: argparse.Namespace, logger: logger.Logger):
 
     protocol = None
 
@@ -26,7 +26,7 @@ def f_network(args, logger):
 
         return host_scanner._results
 
-def f_hashcrack(args, logger):
+def f_hashcrack(args: argparse.Namespace, logger: logger.Logger):
 
     if args.al:
 
@@ -41,16 +41,21 @@ def f_hashcrack(args, logger):
 
         return cracker.start(args.a, background=False)
     
-def f_fuzzer(args, logger):
+def f_fuzzer(args: argparse.Namespace, logger: logger.Logger):
 
     #url_fuzzer = fuzzer.UrlFuzzer(args.target, args.wordlist, args.timeout, args.status_code, logger=logger)
     url_fuzzer = fuzzer.UrlFuzzer(args.dirs, args.files, 'wordlists/fuzzer/extensions_common.txt', logger=logger)
     url_fuzzer.start(args.target, threads=args.threads)
 
 
-def f_checker(args, logger):
+def f_checker(args: argparse.Namespace, logger: logger.Logger):
 
-    http_checker = checker.HttpChecker(args.target, args.params, args.csrf, logger)
+    if args.csrf and not args.csrf_url:
+
+        logger.error('--csrf-url argument is not set')
+        return
+
+    http_checker = checker.HttpChecker(args.target, args.params, args.csrf, args.csrf_url, logger)
 
     if http_checker.load(args.combolist, args.usernames, args.passwords, args.proxies):
         http_checker.start(threads=args.threads)
@@ -88,7 +93,8 @@ if __name__ == '__main__':
 
     p_checker = subparsers.add_parser('checker', help='Enable the checker module')
     p_checker.add_argument('--proxies', help='Path to a proxylist <protocol:endpoint:port>', default=None)
-    p_checker.add_argument('--csrf', help='HTML <input name="X"> tag which is used for CSRF protection <X>', default=None)
+    p_checker.add_argument('--csrf', help='The HTML input name which holds the CSRF token value')
+    p_checker.add_argument('--csrf-url', help='The URL to fetch the csrf-token from')
     p_checker.add_argument('--threads', help='Thread amount to use', default=10, type=int)
     p_checker.add_argument('--params', help='HTTP parameters to fill <username,password>', default='username=$USERNAME&password=$PASSWORD', required=True)
     p_checker.add_argument('-u', '--usernames', help='Path to a file with usernames')
