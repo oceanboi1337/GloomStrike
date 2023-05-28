@@ -50,12 +50,7 @@ def f_fuzzer(args, logger):
 
 def f_checker(args, logger):
 
-    if not ',' in args.param:
-        logger.error(f'Invalid argument {args.param}')
-
-    parameters = args.param.split(',')
-
-    http_checker = checker.HttpChecker(args.target, args.csrf, parameters, logger)
+    http_checker = checker.HttpChecker(args.target, args.params, args.csrf, logger)
 
     if http_checker.load(args.combolist, args.usernames, args.passwords, args.proxies):
         http_checker.start(threads=args.threads)
@@ -95,7 +90,7 @@ if __name__ == '__main__':
     p_checker.add_argument('--proxies', help='Path to a proxylist <protocol:endpoint:port>', default=None)
     p_checker.add_argument('--csrf', help='HTML <input name="X"> tag which is used for CSRF protection <X>', default=None)
     p_checker.add_argument('--threads', help='Thread amount to use', default=10, type=int)
-    p_checker.add_argument('--param', help='HTTP parameters to fill <username,password>', default='username,password')
+    p_checker.add_argument('--params', help='HTTP parameters to fill <username,password>', default='username=$USERNAME&password=$PASSWORD', required=True)
     p_checker.add_argument('-u', '--usernames', help='Path to a file with usernames')
     p_checker.add_argument('-p', '--passwords', help='Path to a file with passwords')
     p_checker.add_argument('-c', '--combolist', help='Path to a file with username:password')
