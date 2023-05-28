@@ -1,4 +1,6 @@
-import socket, threading, select, time, network, helpers, os, logger
+import socket, threading, select, time, os
+import gloomstrike.network as network
+from gloomstrike import logger, helpers
 
 from scapy.all import srp, Ether, ARP
 
@@ -12,15 +14,15 @@ class HostScanner:
         self._logger = logger
         self._event = threading.Event()
 
-        self.target = network.helpers.is_valid_network(target)
+        self._target = network.helpers.is_valid_network(target)
 
-        if not self.target:
+        if not self._target:
             self._logger.error(f'Invalid target {target}')
 
-        if self.target != None:
+        else:
 
             self._logger.info('Generating host list')
-            self.hosts = helpers.QueueHandler([host for host in self.target.hosts()])
+            self._hosts = helpers.QueueHandler([host for host in self._target.hosts()])
 
         try:
 
@@ -31,7 +33,7 @@ class HostScanner:
             self._logger.error('Failed to setup socket: {e}')
 
         self.ready = bool(
-            self.target and
+            self._target and
             hasattr(self, 's')
         )
 
@@ -120,7 +122,10 @@ class HostScanner:
 
         src = network.helpers.default_interface()
 
-        for host in self.target:
+        for host in self._target:
+
+            if host == self._target.broadcast_address:
+                continue
 
             if self._event.is_set():
                 break
@@ -144,8 +149,13 @@ class HostScanner:
                 icmp.code = 0
                 icmp.id = os.getpid() & 0xffff
 
-                self.s.sendto(ip.pack() + icmp.pack(), (str(host), 0))
-                self._progress += 1
+                try:
+
+                    self.s.sendto(ip.pack() + icmp.pack(), (str(host), 0))
+                    self._progress += 1
+
+                except Exception as e:
+                    self._logger.error(f'Error while sending packet to {host} {e}')
 
                 try:
                     time.sleep(1 / 1000)
@@ -162,7 +172,7 @@ class HostScanner:
         self._logger.info(f'Sending ARP packets...')    
         
         eth = Ether(dst='ff:ff:ff:ff:ff:ff')
-        arp = ARP(pdst=[str(host) for host in self.hosts])
+        arp = ARP(pdst=[str(host) for host in self._hosts])
 
         answers, unanswered = srp(eth / arp, timeout=3, verbose=0, promisc=False)
 

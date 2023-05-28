@@ -1,4 +1,5 @@
-import struct, ipaddress, enum, network, socket
+import struct, ipaddress, enum, socket
+import gloomstrike.network as network
 
 class Flags(enum.IntEnum):
     FIN = 0x1
