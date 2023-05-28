@@ -57,7 +57,7 @@ def f_checker(args, logger):
 
     http_checker = checker.HttpChecker(args.target, args.csrf, parameters, logger)
 
-    if http_checker.load(args.wordlist, args.proxies):
+    if http_checker.load(args.combolist, args.usernames, args.passwords, args.proxies):
         http_checker.start(threads=args.threads)
 
 if __name__ == '__main__':
@@ -92,12 +92,14 @@ if __name__ == '__main__':
     p_fuzzer.add_argument('target', help='Target URL to fuzz')
 
     p_checker = subparsers.add_parser('checker', help='Enable the checker module')
-    p_checker.add_argument('-w', '--wordlist', help='Path to the wordlist containing the logins <username:password>')
-    p_checker.add_argument('-p', '--proxies', help='Path to the proxylist <protocol:endpoint:port>', default=None)
+    p_checker.add_argument('--proxies', help='Path to a proxylist <protocol:endpoint:port>', default=None)
     p_checker.add_argument('--csrf', help='HTML <input name="X"> tag which is used for CSRF protection <X>', default=None)
     p_checker.add_argument('--threads', help='Thread amount to use', default=10, type=int)
-    p_checker.add_argument('target', help='Target URL to check logins for')
     p_checker.add_argument('--param', help='HTTP parameters to fill <username,password>', default='username,password')
+    p_checker.add_argument('-u', '--usernames', help='Path to a file with usernames')
+    p_checker.add_argument('-p', '--passwords', help='Path to a file with passwords')
+    p_checker.add_argument('-c', '--combolist', help='Path to a file with username:password')
+    p_checker.add_argument('target', help='Target URL to check logins for')
 
     args = parser.parse_args()
 
