@@ -3,12 +3,32 @@ from gloomstrike import logger, helpers, network
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv4 - ipv6 mismatch warning bug
 from scapy.all import sr1, IPv46, TCP
 
+# The top 20 ports from the nmap website
 TOP_20_PORTS=[80, 23, 443, 21, 22, 25, 3389, 110, 445, 139, 143, 53, 135, 3306, 8080, 1723, 111, 995, 993, 5900, 631, 161, 137, 123, 138, 1434, 445, 135, 67, 139, 500, 68, 520, 1900, 4500, 514, 49152, 162, 69]
 
 class PortScanner:
 
+    '''
+    The PortScanner object is used to scan a host for open ports.
+
+    On systems except windows it will send TCP SYN packets to a host and waits for a SYN + ACK response which indicates that the port is open.
+    If the system is windows then it will use the Scapy API, this requires WinPcap to be installed.
+
+    Attributes:
+        progress (float): Returns the scan progress in %.
+        _threads (list[threading.Thread]): Contains all the threads running.
+        _results (dict): Stores all the open ports found during the scan.
+        _event (threading.Event): Used to stop running threads.
+        _progress (int): Tracks how many ports have been scanned.
+        _retries (int): How many times to retry a port scan.
+    '''
+
     def __init__(self, target : str, ports : str, logger : logger.Logger=None) -> None:
         
+        '''
+        
+        '''
+
         self._threads = []
         self._results = {}
         self._event = threading.Event()
@@ -40,6 +60,7 @@ class PortScanner:
 
         self._queue = helpers.QueueHandler(self.ports)
 
+        # Checks if all the required variables are ready.
         self.ready = bool(
             hasattr(self, 'target') and
             hasattr(self, 'src')
@@ -62,11 +83,11 @@ class PortScanner:
 
             for retry in range(self._retries):
 
+                # Uses Scapy API if the platform is windows
                 if sys.platform == 'win32':
                     
                     ip_header = IPv46(dst=str(self.target))
                     syn = TCP(sport=self.src_port, dport=port, flags='S')
-                    fin = TCP(sport=self.src_port, dport=port, flags='F')
 
                     if (packet := sr1(ip_header / syn, timeout=(self.timeout / 1000) * (retry + 1), verbose=0)) != None \
                     and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self._results:
