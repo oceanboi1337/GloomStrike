@@ -50,15 +50,18 @@ def f_fuzzer(args: argparse.Namespace, logger: logger.Logger):
 
 def f_checker(args: argparse.Namespace, logger: logger.Logger):
 
-    if args.csrf and not args.csrf_url:
+    if not args.csrf and args.csrf_url:
+        logger.error('--csrf argument missing'); return
 
-        logger.error('--csrf-url argument is not set')
-        return
+    if not args.csrf_url and args.csrf:
+        logger.error('--csrf-url argument missing'); return
 
     http_checker = checker.HttpChecker(args.target, args.params, args.csrf, args.csrf_url, logger)
 
     if http_checker.load(args.combolist, args.usernames, args.passwords, args.proxies):
-        http_checker.start(threads=args.threads)
+        http_checker.start(threads=args.threads, background=False)
+
+    return http_checker.results(format=args.output)
 
 if __name__ == '__main__':
 

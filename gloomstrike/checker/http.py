@@ -5,6 +5,18 @@ class Proxy:
 
     def __init__(self, proxy_type: str, endpoint: str, username: str=None, password: str=None) -> None:
 
+        '''
+        Create a Proxy object that can be passed to the HttpChecker.
+
+        Allows the HttpChecker to send requets through a proxy.
+
+        Args:
+            proxy_type (str): The proxy type, SOCK4, SOCK5, HTTPS.
+            endpoint (str): The host:port of the proxy server.
+            username (str) Username for the proxy server (Optional).
+            password (str) Password for the proxy server (Optional).
+        '''
+
         self._proxy_type = proxy_type
         self._endpoint = endpoint
         self._username = username
@@ -13,6 +25,16 @@ class Proxy:
 class HttpChecker:
 
     def __init__(self, url: str, params: str, csrf: str=None, csrf_url: str=None, logger: logger.Logger=None) -> None:
+
+        '''
+        Creates a HttpChecker object used to check logins.
+
+        Args:
+            url (str): The url for the target's login page.
+            params (str): HTTP like parameter string, username=$USERNAME&password=$PASSWORD.
+            csrf (str): Takes the "name" attribute value of a HTML <input> element.
+            csrf_url (str): The URL where the csrf-token is generated before logging in.
+        '''
 
         self._url = url
         self._params = params
@@ -32,10 +54,25 @@ class HttpChecker:
 
     def load(self, combolist_path: str, usernames_path: str, passwords_path: str, proxies_path: str) -> bool:
 
-        combolist = []
+        '''
+        Loads the specified combolist, usernames and passwords files into memory.
+
+        If only a combolist is loaded, it will read username:password from the file into a list.
+
+        If a username and password file is loaded, it will read both files and assign every password to every username.
+
+        Args:
+            combolist_path (str): Path to the combolist file with username:password format.
+            usernames_path (str): Path to the usernames file, one username per line.
+            passwords_path (str): Path to the passwords file, one password per line.
+        '''
+
         usernames = []
         passwords = []
 
+        # while line := f.readline() will read a line until all lines are read.
+        # rstrip() is used to remove any trailing newline character.
+        # The UnicodeDecodeError exception is used to catch potential decode('utf-8') errors.
         try:
 
             if combolist_path:
@@ -58,7 +95,7 @@ class HttpChecker:
                     
                 return True
             
-            elif usernames_path and passwords_path:
+            if usernames_path and passwords_path:
 
                 with open(usernames_path, 'r+b') as f:
 
@@ -72,6 +109,7 @@ class HttpChecker:
 
                         passwords.append(line)
 
+                # Iterate over each username and password to combine them into a combination
                 for username in usernames:
 
                     for password in passwords:
@@ -92,6 +130,15 @@ class HttpChecker:
 
     def _background(self) -> list:
 
+        '''
+        Function used to wait for threads to finish.
+        
+        Uses a infinite while loop to wait for the KeyboardInterrupt exception, it will also exit the loop if all the usernames and passwords have been checked.
+
+        Returns:
+            list: A list containing the valid [["username", "password"]] combinations.
+        '''
+
         while not self._event.is_set():
 
             try:
@@ -111,6 +158,18 @@ class HttpChecker:
 
     def _parse_params(self, params: str) -> dict:
 
+        '''
+        Converts a HTTP parameter like string into a dict.
+
+        Will convert username=foo&password=bar into {"username": "foo", "password": "bar"}
+
+        Args:
+            params (str): A HTTP parameter like string, username=foo&password=bar.
+
+        Returns:
+            dict: {"username": "foo", "password": "bar"}
+        '''
+
         data = {}
 
         for param in params.split('&'):
@@ -123,14 +182,37 @@ class HttpChecker:
         return data
 
     def _get_csrf(self) -> tuple:
+
+        '''
+        Gets the CSRF-Token for a webpage if the csrf variable was passed on class init.
+
+        Sends a GET request to the URL specified by csrf_url passed on class init.
+
+        Checks the HTML response for a <input name="csrf-token"> element where the csrf-token value is based on the self._csrf variable.
+        
+        Returns:
+            tuple: A tuple with the csrf-token and cookies (csrf-token, cookies).
+            None: Will be returned if it failed to fetch the csrf-token.
+        '''
     
-        resp = requests.get(self._csrf_url)
+        try:
+
+            resp = requests.get(self._csrf_url)
+            
+        except requests.ConnectTimeout:
+            self._logger.error(f'Connection to {self._csrf_url} timeout')
+        except requests.ConnectionError:
+            self._logger.error(f'Connection to {self._csrf_url} failed')
+        except Exception as e:
+            self._logger.error(f'Error while requesting {self._csrf_url}')
 
         if not resp.ok:
             return None
         
         soup = bs4.BeautifulSoup(resp.text, 'html.parser')
         
+        # Finds the first <input name="self._csrf"> HTML element.
+        # Returns the value="" attribute.
         if csrf := soup.find('input', {'name': self._csrf}):
             
             return csrf.attrs.get('value'), resp.cookies
@@ -138,6 +220,20 @@ class HttpChecker:
         return None
 
     def _check(self, url: str, username: str, password: str) -> bool:
+
+        '''
+        Sends a POST request to the specified URL with a username and password.
+
+        Replaces the $USERNAME, $PASSWORD and $CSRF values in the self._params value declared on class init.
+
+        Args:
+            url (str): The URL where the POST request should be sent.
+            username (str): The username $USERNAME will be replaced with.
+            password (str): The password $PASSWORD will be replaced with.
+
+        Returns:
+            bool: A boolean value, True if the login was success and False if it failed.
+        '''
 
         params = self._params.replace('$USERNAME', username)
         params = params.replace('$PASSWORD', password)
@@ -161,6 +257,15 @@ class HttpChecker:
         return resp.ok
 
     def _checker(self):
+
+        '''
+        Sends a POST login request for each username:password combination.
+
+        When a valid combination is found, it will be added to self._results in a [[username, password]] format.
+
+        Returns:
+            list: The self._results list, contains [[username, password]].
+        '''
             
         for username, password in self._credentials:
 
@@ -175,6 +280,8 @@ class HttpChecker:
                 self._logger.info(f'Found valid credentials "{username}:{password}"')
 
         self._event.set()
+
+        return self._results
 
     def start(self, threads: int, background: bool=False) -> bool:
 
@@ -197,4 +304,4 @@ class HttpChecker:
             return True
         
         else:
-            return self._background()
+            return self._checker()
