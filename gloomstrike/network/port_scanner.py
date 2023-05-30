@@ -23,10 +23,13 @@ class PortScanner:
         _retries (int): How many times to retry a port scan.
     '''
 
-    def __init__(self, target : str, ports : str, logger : logger.Logger=None) -> None:
+    def __init__(self, target: str, ports: str=None, logger: logger.Logger=None) -> None:
         
         '''
-        
+        The init method takes the target and ports (seperated by ,) to scan.
+
+        If no ports are passed the top 20 ports from the nmap website will be used.
+        Passing "-" as the port will make it scan all ports 1 - 65535.
         '''
 
         self._threads = []
@@ -46,8 +49,8 @@ class PortScanner:
 
         elif ports == '-':
 
+            # Adds the most common ports to the front of the scanning queue.
             self.ports = TOP_20_PORTS
-
             self.ports.extend(list(range(1, 65536)))
 
         else:
@@ -68,9 +71,19 @@ class PortScanner:
 
     @property
     def progress(self) -> int:
+        '''
+        Calculates the scan progress in percentage and returns it.
+        '''
         return round((self._progress / self._queue.queue.maxsize) * 100, 2)
 
     def _syn_scan(self):
+
+        '''
+        Iterates each port in the self._ports list and sends a TCP SYN packet.
+
+        Each response will be checked for a SYN + ACK packet to indicate that the port is open.
+        If the os.platform is detected as windows it will use the Scapy API to send the packets, this requires WinPcap to be installed.
+        '''
 
         for port in self._queue:
 
@@ -126,8 +139,15 @@ class PortScanner:
 
     def _listener(self):
 
+        '''
+        Listens for incoming TCP packets from the host that is being scanned.
+
+        This function should not be called on windows systems as raw TCP sockets is not supported.
+        '''
+
         while not self._event.is_set():
 
+            # Use select to prevent s.recvfrom() from infinite blocking if nothing is being received.
             read, write, error = select.select([self.s], [], [], 0)
             
             if not read:
@@ -146,9 +166,11 @@ class PortScanner:
             if ip.src != self.target or tcp.dst_port != self.src_port:
                 continue
 
+            # Filter out packets with RST flag set.
             if tcp.is_flags_set(network.Flags.RST):
                 continue
 
+            # Check if the packet has ACK + SYN flags set.
             if tcp.is_flags_set(network.Flags.ACK | network.Flags.SYN):
 
                 port = int(tcp.src_port)
@@ -157,22 +179,37 @@ class PortScanner:
                 self._results[port] = {'state': 'open', 'service': 'unknown  '}
 
     def stop(self):
+        '''
+        Stops the current scan.
+
+        Sets the threading.Event() to make every thread exit.
+        '''
         self._event.set()
 
-    def worker(self):
+    def _worker(self):
+
+        '''
+        The main method that spawns the scanner threads and stopping.
+
+        Sets the timeout to the average round-trip-time + 100ms and sets the timeout to the result.
+
+        '''
 
         self._logger.info('Calculating Average RTT...')
 
         try:
-            self.timeout = network.helpers.avg_rtt(self.target)
+            self.timeout = network.helpers.avg_rtt(self.target) + 100
         except PermissionError:
             self._logger.error('Permission error while creating socket')
-            sys.exit(1)
 
-        rtt = round(self.timeout - 100, 2)
+        # Rounds the round-trip-time to 2 decimal places for prettier output.
+        rtt = round(self.timeout, 2)
 
         self._logger.info(f'Average RTT: {rtt} ms')
 
+        # 25 Threads is created if the platform is windows.
+        # 1 Thread is created if not windows.
+        # This is done because windows blocks raw TCP sockets so it uses to scapy with threading instead.
         for _ in range(25 if sys.platform == 'win32' else 1):
 
             thread = threading.Thread(target=self._syn_scan)
@@ -185,6 +222,7 @@ class PortScanner:
 
             try:
 
+                # Exit if there are no ports left to scan.
                 if self._queue.length == 0:
                     self._event.set()
 
@@ -203,12 +241,27 @@ class PortScanner:
 
     def scan(self, retries : int=3, background : bool=False):
 
+        '''
+        Starts a new port scan.
+
+        If the platform is not windows it will create a raw TCP socket and start a new thread on the _listener method.
+
+        Args:
+            retries (int): How many times to retry a port check (3 by default).
+            background (bool): Starts the scan in the background if True (False by default).
+
+        Returns:
+            list: The list of ports found.
+            bool: If background is True, it will return True if the background process starts successfully.
+        '''
+
         self._retries = retries
         
         self._event.clear()
 
         if sys.platform != 'win32':
 
+            # Sets the socket family to IPv4 or IPv6 based on the target address.
             family = socket.AF_INET if self.target.version == 4 else socket.AF_INET6
             
             self.s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
@@ -220,11 +273,11 @@ class PortScanner:
 
         if background:
 
-            self.background_thread = threading.Thread(target=self.worker)
+            self.background_thread = threading.Thread(target=self._worker)
             self.background_thread.daemon = True
             self.background_thread.start()
 
-            return self._results
+            return True
         
         else:
-            return self.worker()
+            return self._worker()

@@ -14,14 +14,10 @@ class HostScanner:
     Using raw sockets requires escalated privileges (Administrator / Root).
     The ARP method uses Scapy's API to send ARP packets to discover hosts, this requires WinPcap to be installed if used on windows.
 
-    Args:
-        target (str): The target CIDR to scan, 192.168.1.0/24.
-
     Attributes:
         _threads (list[threading.Thread]): A list of the running threads.
         _results (dict): Dictionary that contains the results of a network scan.
         _event (threading.Event): Even that can be .set() to stop the threads.
-        progress (float): Returns the progress percentage.
         _target (ipaddress.IPv4Network | ipaddress.IPv6Network) Is the network object which generates the address for each host.
         _hosts (ipaddress.IPv4Address | ipaddress.IPv6Address) A list of IP Addresses that will be used in the scan.
         _s (socket.socket) Is the raw socket used by the ICMP scanner.
@@ -41,7 +37,7 @@ class HostScanner:
         The __init__ method sets up a raw socket that is used to send ICMP RAW packets, it requires Administrator / Root privileges.
 
         Args:
-            target (str): The CIDR that will be scanned.
+            target (str): The target CIDR to scan, 192.168.1.0/24.
         '''
 
         self._threads = []

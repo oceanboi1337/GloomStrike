@@ -1,32 +1,48 @@
 import mmap, hashlib, threading, time, multiprocessing, os, sys
 from gloomstrike import logger
 
-def _worker(line):
+def _worker(algorithm: str, path: str, results: dict, hashes: list, start: int, end: int):
 
-    print(line)
+    '''
+    Iterates over each word in the wordlist and checks if the generated hash matches the input hash.
 
-def _worker(algorithm, path, results, hashes, start, end):
+    Uses mmap to create a memory map of the wordlist.
+    Maps the whole file and uses seek(start) function to set the starting point in the file and read until it has passed the "end" argument.
+    If multiprocessing is used each process should have their own start - end range to improve performance.
 
+    Args:
+        algorithm (str): The hashing algorithm to use.
+        path (str): The path to the wordlist.
+        results (dict): References the results dict, this is where cracked hashes are added.
+        hashes (list): List of the hashes to crack.
+        start (int): Index of where to start reading from the file.
+        end (int): Where to stop reading the file.
+    '''
+
+    # Open the file in binary read mode.
     with open(path, 'r+b') as f:
 
+        # Creates a memory map of the file.
         wordlist = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
+        # madvise(MADV_DONTNEED) is used to free up memory that is not needed anymore.
         if 'linux' in sys.platform:
             wordlist.madvise(mmap.MADV_DONTNEED)
 
-    index = 0
 
-    while 1:
+
+    # Uses list indexing to access the hashes instead of a queue.
+    # This is to prevent locking and releasing of a mutex when accessing the list.
+
+    while index <= len(hashes):
 
         wordlist.seek(start)
-
-        if index >= len(hashes):
-            break
 
         hash = hashes[index].decode()
 
         while word := wordlist.readline():
 
+            # Removes trailing newline characters
             word = word.rstrip()
 
             m = hashlib.new(algorithm)
@@ -35,10 +51,12 @@ def _worker(algorithm, path, results, hashes, start, end):
 
             if word_hash == hash:
 
+                # Adds the cracked hash to the results.
                 results[hash] = word
                 index += 1
                 break
 
+            # Stop reading the mapped file when passing the end index.
             if wordlist.tell() > end:
                 break
 
@@ -48,33 +66,74 @@ def _worker(algorithm, path, results, hashes, start, end):
 
 class Hashcrack:
 
-    def __init__(self, db : str=None, logger : logger.Logger=None) -> None:
+    '''
+    The Hashcrack class is used to crack hashes using a wordlist using multiprocessing.
 
-        self.db = db
-        self.logger = logger
+    The amount of processes spawned is based on the amount of logical cpu's available on the system - 1.
+    Each process is assigned a start - end range on where to read from the memory mapped wordlist file.
+
+    Attributes:
+        _potfile (str): The path to the file to store the cracked hashes (Optional).
+        _processors (int): The amount of processes to spawn.
+        _processes (list): List containing the running processes.
+        _manager (multiprocessing.Manager): A memory manager that allows for shared memory between the child processes and the main process.
+        _results (dict): Dictionary created using the multiprocessing manager.
+        _hashes (list): List containing the hashes to crack.
+        _wordlist_size (int): Size of the wordlist.
+        _wordlist_path (str): Path to the wordlist.
+    '''
+
+    def __init__(self, potfile: str=None, logger: logger.Logger=None) -> None:
+
+        '''
+        Initializes the variables needed to run.
+
+        Args:
+            potfile (str): The path to the file to store cracked hashes.
+        '''
+
+        self._potfile = potfile
+        self._logger = logger
 
         self._processors = os.cpu_count() - 1
         self._processes : list(multiprocessing.Process) = []
 
-        self.manager = multiprocessing.Manager()
-        self._results = self.manager.dict()
-        self._hashes = None
+        self._manager = multiprocessing.Manager()
+        self._results = self._manager.dict()
+        self._hashes = []
 
         self._wordlist_size = 0
         self._wordlist_path = None
 
     @property
     def status(self):
+        '''
+        Returns the amount of processes running.
+        '''
         return len(self._processes)
 
     def load_wordlist(self, wordlist : str):
+
+        '''
+        Checks if the wordlist is available and gets the size of the file.
+
+        Opens the file and seek() to the end to determine the file size.
+
+        Args:
+            wordlist (str): Path to the wordlist.
+
+        Returns:
+            bool: Returns False if it failed to read the file and True if successful.
+        '''
 
         self._wordlist_path = wordlist
 
         try:
 
-            with open(wordlist, 'rb') as f:
+            with open(wordlist, 'r+b') as f:
 
+                # Move the file cursor to the end of the file.
+                # Uses f.tell() to get the position of the cursor, which is the end of the file.
                 f.seek(0, 2)
                 self._wordlist_size = f.tell()
 
@@ -82,29 +141,52 @@ class Hashcrack:
         
         except Exception as e:
 
-            self.logger.error(f'Failed to mmap() file {wordlist}')
+            self._logger.error(f'Failed to read file {wordlist}')
             return False
 
-    def load_hashes(self, hash_file : str):
+    def load_hashes(self, hashes: str | list):
+
+        '''
+        Reads the file  with the hashes into a list.
+
+        Args:
+            hashes (str | list): A string can be passed to read the hashes from a file. Or a list with the hashes can be passed instead.
+
+        Returns:
+            bool: Weather or not the file read was successful.
+        '''
+
+        # Checks if the hashes argument is a list or file path.
+        # Skip the file reading if its a list.
+        if type(hashes) == list:
+            self._hashes = hashes
+            return True
 
         try:
 
-            hashes = []
+            # Reset the hashes if the object is gonna be reused.
+            self._hashes = []
 
-            with open(hash_file, 'rb') as f:
+            with open(hashes, 'r+b') as f:
 
                 while line := f.readline():
-                    hashes.append(line.rstrip())
 
-            #self._hashes = self.manager.list(hashes)
-            self._hashes = hashes
+                    line = line.rstrip()
+
+                    hashes.append(line)
 
             return True
 
         except Exception as e:
-            self.logger.error(f'Failed to load hashes: {e}')
+            self._logger.error(f'Failed to load hashes: {e}')
 
-    def _crack(self, algorithm : str):
+    def _watcher(self):
+
+        '''
+        Watches the _results dict for any cracked hashes and reports it to STDOUT.
+        
+        Will stop watching if there are no processes running or if all the hashes has been cracked.
+        '''
 
         log_list = []
         start_time = time.time()
@@ -116,7 +198,7 @@ class Hashcrack:
                 if hash in log_list:
                     continue
 
-                self.logger.info(f'Cracked Hash in {round(time.time() - start_time, 2)} sec {hash} -> {word}')
+                self._logger.info(f'Cracked Hash in {round(time.time() - start_time, 2)} sec {hash} -> {word}')
                 log_list.append(hash)
 
             if len([proc for proc in self._processes if proc.is_alive()]) == 0:
@@ -127,7 +209,7 @@ class Hashcrack:
 
             time.sleep(1 / 1000)
 
-        self.logger.warning(f'Killing processes')
+        self._logger.warning(f'Killing processes')
 
         self._results = dict(self._results)
 
@@ -135,7 +217,7 @@ class Hashcrack:
             proc.kill()
             self._processes.remove(proc)
 
-        self.manager.shutdown()
+        self._manager.shutdown()
 
         return self._results
 
@@ -146,11 +228,11 @@ class Hashcrack:
         
         if algorithm not in hashlib.algorithms_available:
             
-            self.logger.error(f'Hashing algorithm {algorithm} is not available')
+            self._logger.error(f'Hashing algorithm {algorithm} is not available')
             return False
 
-        self.logger.info(f'Logical CPUs: {self._processors + 1}')
-        self.logger.info(f'Using {self._processors}')
+        self._logger.info(f'Logical CPUs: {self._processors + 1}')
+        self._logger.info(f'Using {self._processors}')
 
         increment = int(self._wordlist_size / self._processors)
 
@@ -167,15 +249,15 @@ class Hashcrack:
 
             self._processes.append(proc)
 
-            self.logger.info(f'Started {proc.name}')
+            self._logger.info(f'Started {proc.name}')
 
         if background:
 
-            self.background_thread = threading.Thread(target=self._crack, args=[algorithm])
+            self.background_thread = threading.Thread(target=self._watcher, args=[algorithm])
             self.background_thread.setDaemon = True
             self.background_thread.start()
 
             return True
         
         else:
-            return self._crack(algorithm)
+            return self._watcher(algorithm)
