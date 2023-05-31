@@ -186,6 +186,9 @@ class Hashcrack:
         Watches the _results dict for any cracked hashes and reports it to STDOUT.
         
         Will stop watching if there are no processes running or if all the hashes has been cracked.
+
+        Returns:
+            dict: The dictionary with the cracked hashes (hash: plaintext)
         '''
 
         log_list = []
@@ -195,15 +198,22 @@ class Hashcrack:
 
             for hash, word in self._results.items():
 
+                # Continue if the cracked hash has already been printed
                 if hash in log_list:
                     continue
 
-                self._logger.info(f'Cracked Hash in {round(time.time() - start_time, 2)} sec {hash} -> {word}')
+                # How long it took to crack the hash
+                crack_time = round(time.time() - start_time, 2)
+
+                self._logger.info(f'Cracked Hash in {crack_time} sec {hash} -> {word}')
                 log_list.append(hash)
 
+            # Checks if there are any running processes left
+            # Exits when none are found
             if len([proc for proc in self._processes if proc.is_alive()]) == 0:
                 break
 
+            # Exits if all hashes have been cracked
             if len(self._results) == len(self._hashes):
                 break
 
@@ -211,21 +221,41 @@ class Hashcrack:
 
         self._logger.warning(f'Killing processes')
 
+        # Convert the results to a normal dict
         self._results = dict(self._results)
 
+        # Kill any leftover processes
         for proc in [proc for proc in self._processes]:
+
             proc.kill()
             self._processes.remove(proc)
 
+        # Shutdown the multiprocess memory manager
         self._manager.shutdown()
 
         return self._results
 
     def start(self, algorithm : str, background : bool=False):
 
+        '''
+        Starts the cracking process.
+
+        Divides the workload over multiple processes and starts the result watcher.
+
+        Args:
+            algorithm (str): The hashing algorithm to use.
+            background (bool): Will run the cracking process in the background if True.
+
+        Returns:
+            dict: The cracked hashes.
+            bool: True if the process was started in the background, False if it failed to do so.
+        '''
+
+        # Return false if the wordlist or hashes have not been loaded.
         if self._wordlist_size <= 0 and len(self._hashes) > 0:
             return False
         
+        # Check if the algorithm is available in hashlib.
         if algorithm not in hashlib.algorithms_available:
             
             self._logger.error(f'Hashing algorithm {algorithm} is not available')
@@ -234,6 +264,7 @@ class Hashcrack:
         self._logger.info(f'Logical CPUs: {self._processors + 1}')
         self._logger.info(f'Using {self._processors}')
 
+        # How many bytes from the wordlist each process should read.
         increment = int(self._wordlist_size / self._processors)
 
         start = 0
@@ -244,6 +275,9 @@ class Hashcrack:
             proc = multiprocessing.Process(target=_worker, args=[algorithm, self._wordlist_path, self._results, self._hashes, start, end])
             proc.start()
 
+            # The next process should start where the previous ends.
+            # Each process start 1024 bytes before the actual start.
+            # This is to make sure every line is being read.
             start = int(end) - 1024
             end += int(increment)
 
@@ -254,7 +288,7 @@ class Hashcrack:
         if background:
 
             self.background_thread = threading.Thread(target=self._watcher, args=[algorithm])
-            self.background_thread.setDaemon = True
+            self.background_thread.daemon = True # Set daemon so the process will exit when main thread does.
             self.background_thread.start()
 
             return True
