@@ -151,13 +151,13 @@ class UrlFuzzer:
 
             # Check if the response was a redirect.
             case 301 | 302:
-                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url} -> {location}', level=logger.Level.WARNING)
+                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url} -> {location}', level=logger.Level.LOG)
                 self._results.append(f'{url} -> {location}')
                 ret = location
             
             case _:
 
-                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url}', level=logger.Level.INFO)
+                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url}', level=logger.Level.LOG)
                 self._results.append(url)
                 ret = resp.url
 
@@ -277,7 +277,7 @@ class UrlFuzzer:
 
         for _ in range(threads):
 
-            thread = threading.Thread(target=self._fuzzer, args=[max_depth, threads])
+            thread = threading.Thread(target=self._fuzzer, args=[max_depth])
             thread.daemon = True
 
             self._threads.append(thread)

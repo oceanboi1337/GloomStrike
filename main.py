@@ -35,7 +35,7 @@ def f_hashcrack(args: argparse.Namespace):
 
         return
     
-    cracker = hashcrack.Hashcrack()
+    cracker = hashcrack.Hashcrack(potfile=args.potfile)
 
     if cracker.load_hashes(args.f) and cracker.load_wordlist(args.w):
 
@@ -98,6 +98,7 @@ if __name__ == '__main__':
     p_hashcrack.add_argument('-w', help='Path to the wordlist')
     p_hashcrack.add_argument('-a', help='The hash type')
     p_hashcrack.add_argument('-al', help='List available hashing algorithms', action='store_true')
+    p_hashcrack.add_argument('-pf', '--potfile', help='Path to the potlist file')
 
     p_fuzzer = subparsers.add_parser('fuzzer', help='Enable the fuzzer module')
     p_fuzzer.add_argument('-f', '--files', help='Path to files wordlist', default='wordlists/fuzzer/files/common-files.txt')

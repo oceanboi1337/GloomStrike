@@ -34,11 +34,12 @@ def _worker(algorithm: str, path: str, results: dict, hashes: list, start: int, 
     # Uses list indexing to access the hashes instead of a queue.
     # This is to prevent locking and releasing of a mutex when accessing the list.
 
-    while index <= len(hashes):
+    index = 0
+    while index < len(hashes):
 
         wordlist.seek(start)
 
-        hash = hashes[index].decode()
+        hash = hashes[index]
 
         while word := wordlist.readline():
 
@@ -52,16 +53,15 @@ def _worker(algorithm: str, path: str, results: dict, hashes: list, start: int, 
             if word_hash == hash:
 
                 # Adds the cracked hash to the results.
-                results[hash] = word
+                results[hash] = word.decode()
                 index += 1
                 break
 
             # Stop reading the mapped file when passing the end index.
             if wordlist.tell() > end:
+                index += 1
                 break
 
-        index += 1
-        
     wordlist.close()
 
 class Hashcrack:
@@ -170,9 +170,9 @@ class Hashcrack:
 
                 while line := f.readline():
 
-                    line = line.rstrip()
+                    line = line.rstrip().decode()
 
-                    hashes.append(line)
+                    self._hashes.append(line)
 
             return True
 
@@ -207,6 +207,9 @@ class Hashcrack:
                 logger.log(f'Cracked Hash in {crack_time} sec {hash} -> {word}', level=logger.Level.LOG)
                 log_list.append(hash)
 
+                if self._potfile and not self.check_potfile(hash):
+                    self.add_potfile(hash, word)
+
             # Checks if there are any running processes left
             # Exits when none are found
             if len([proc for proc in self._processes if proc.is_alive()]) == 0:
@@ -229,10 +232,38 @@ class Hashcrack:
             proc.kill()
             self._processes.remove(proc)
 
+        logger.log(f'Cracked {len(self._results)} / {self._hash_count} hashes', level=logger.Level.LOG)
+
         # Shutdown the multiprocess memory manager
         self._manager.shutdown()
 
         return self._results
+
+    def check_potfile(self, hash: str):
+
+        try:
+            with open(self._potfile, 'r+b') as f:
+
+                while line := f.readline():
+
+                    line = line.rstrip()
+                    cracked_hash, word = line.decode().split(':')
+
+                    if cracked_hash == hash:
+                        return word
+
+        except Exception as e:
+            logger.log(f'Failed to check potfile: {e}', level=logger.Level.ERROR)
+
+    def add_potfile(self, hash: str, word: str):
+
+        try:
+            with open(self._potfile, 'a+') as f:
+
+                f.write(f'{hash}:{word}\n')
+
+        except Exception as e:
+            logger.log(f'Failed to add to potfile: {e}', level=logger.Level.ERROR)
 
     def start(self, algorithm : str, background : bool=False):
 
@@ -249,6 +280,26 @@ class Hashcrack:
             dict: The cracked hashes.
             bool: True if the process was started in the background, False if it failed to do so.
         '''
+
+        self._hash_count = len(self._hashes)
+
+        # Check if the hash has been cracked before.
+        if self._potfile:
+
+            for hash in list(self._hashes):
+
+                if (word := self.check_potfile(hash)) == None:
+                    continue
+
+                logger.log(f'Found hash in potfile: {hash} -> {word}', level=logger.Level.LOG)
+
+                self._hashes.remove(hash)
+                self._results[hash] = word
+
+        if len(self._hashes) == 0:
+
+            logger.log(f'Cracked {len(self._results)} / {self._hash_count} hashes', level=logger.Level.LOG)
+            return self._results
 
         # Return false if the wordlist or hashes have not been loaded.
         if self._wordlist_size <= 0 and len(self._hashes) > 0:
@@ -286,11 +337,11 @@ class Hashcrack:
 
         if background:
 
-            self.background_thread = threading.Thread(target=self._watcher, args=[algorithm])
+            self.background_thread = threading.Thread(target=self._watcher)
             self.background_thread.daemon = True # Set daemon so the process will exit when main thread does.
             self.background_thread.start()
 
             return True
         
         else:
-            return self._watcher(algorithm)
+            return self._watcher()

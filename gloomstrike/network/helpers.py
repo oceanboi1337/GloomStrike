@@ -66,7 +66,7 @@ def nslookup(host : str, reverse : bool=False) -> str:
             
         else:
 
-            return ipaddress._IPAddressBase(socket.getaddrinfo(host, 0)[0][4][0])
+            return ipaddress.ip_address(socket.getaddrinfo(host, 0)[0][4][0])
         
     except Exception as e:
         return None
@@ -90,6 +90,7 @@ def ping(dst : ipaddress._IPAddressBase) -> int:
 
     s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
     s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+    s.settimeout(3)
 
     src = default_interface(dst)
 
@@ -98,7 +99,7 @@ def ping(dst : ipaddress._IPAddressBase) -> int:
 
     ip = models.IPHeader()
     ip.version = 4
-    ip.length = 0x28
+    ip.length = 0x1c
     ip.protocol = socket.IPPROTO_ICMP
     ip.ttl = 255
     ip.identifier = os.getpid() & 0xffff
@@ -140,7 +141,7 @@ def avg_rtt(dst : ipaddress._IPAddressBase, rounds : int=10):
 
         total_rtt += ping(dst)
 
-    return round((total_rtt / rounds) + 100, 2) # Rounds the decimal point to 2 places
+    return round((total_rtt / rounds), 2) # Rounds the decimal point to 2 places
 
 def default_interface(dst : ipaddress._IPAddressBase=None) -> ipaddress._IPAddressBase:
 

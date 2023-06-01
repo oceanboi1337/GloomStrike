@@ -65,7 +65,7 @@ class SubFuzzer:
 
             try:
 
-                logger.log(sub, end='\r', level=logger.Level.LOG)
+                logger.log(f'\x1b[0K{sub}', end='\r', level=logger.Level.LOG)
 
                 url = f'{self._protocol}{sub}.{self._domain}'
 

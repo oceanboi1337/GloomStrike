@@ -57,11 +57,11 @@ class IPHeader:
         self.version = self.fields[0]
         self.tos = self.fields[1]
         self.length = self.fields[2]
-        self._identifier = self.fields[3]
+        self.identifier = self.fields[3]
         self.flags = self.fields[4]
         self.ttl = self.fields[5]
         self.protocol = self.fields[6]
-        self._checksum = self.fields[7]
+        self.checksum = self.fields[7]
         self._src = self.fields[8]
         self._dst = self.fields[9]
 
@@ -81,7 +81,7 @@ class IPHeader:
 
             packet = struct.pack('!BBHHHBBH4s4s',
                                 (self.src.version << 4) + 5, self.tos, self.length,
-                                self._identifier, self.flags,
+                                self.identifier, self.flags,
                                 self.ttl, self.protocol, checksum,
                                 self.src.packed,
                                 self.dst.packed)
@@ -148,13 +148,13 @@ class TcpHeader:
 
             self._src_port = self.fields[0]
             self._dst_port = self.fields[1]
-            self._sequence = self.fields[2]
-            self._ack = self.fields[3]
-            self._offset = self.fields[4]
-            self._flags = self.fields[5]
-            self._window = self.fields[6]
-            self._checksum = self.fields[7]
-            self._pointer = self.fields[8]
+            self.sequence = self.fields[2]
+            self.ack = self.fields[3]
+            self.offset = self.fields[4]
+            self.flags = self.fields[5]
+            self.window = self.fields[6]
+            self.checksum = self.fields[7]
+            self.pointer = self.fields[8]
 
         def pack(self):
 
@@ -173,13 +173,13 @@ class TcpHeader:
             tcp = struct.pack('!HHLLBBHHH',
                             self.src_port,
                             self.dst_port,
-                            self._sequence,
-                            self._ack,
+                            self.sequence,
+                            self.ack,
                             (5 << 4) + 0,
-                            self._flags,
-                            self._window,
-                            self._checksum,
-                            self._pointer)
+                            self.flags,
+                            self.window,
+                            self.checksum,
+                            self.pointer)
 
             # Takes the first 12 bytes from the IP header, used only to calculate the checksum.
             psh = struct.pack('!4s4sBBH',
@@ -195,13 +195,13 @@ class TcpHeader:
             tcp = struct.pack('!HHLLBBHHH',
                             self.src_port,
                             self.dst_port,
-                            self._sequence,
-                            self._ack,
+                            self.sequence,
+                            self.ack,
                             (5 << 4) + 0,
-                            self._flags,
-                            self._window,
+                            self.flags,
+                            self.window,
                             checksum,
-                            self._pointer)
+                            self.pointer)
 
             return tcp
 
@@ -231,7 +231,7 @@ class TcpHeader:
             Returns:
                 bool: Returns True if the flag is set or False if not.
             '''
-            return self._flags & flags == self._flags
+            return self.flags & flags == self.flags
         
 class IcmpHeader:
 
@@ -253,10 +253,10 @@ class IcmpHeader:
             self.data = data[0:20] if data else b'\0' * 8
             self.fields = struct.unpack('!bbHHh', self.data)
 
-            self._type = self.data[0]
-            self._code = self.data[1]
-            self._checksum = self.data[2]
-            self._id = self.data[3]
+            self.type = self.data[0]
+            self.code = self.data[1]
+            self.checksum = self.data[2]
+            self.id = self.data[3]
 
         def pack(self):
              
@@ -268,10 +268,10 @@ class IcmpHeader:
             '''
             
             # Temporary ICMP header
-            icmp = struct.pack('!bbHHh', self._type, self._code, self._checksum, self._id, 1)
+            icmp = struct.pack('!bbHHh', self.type, self.code, self.checksum, self.id, 1)
 
             checksum = network.helpers.calculate_checksum(icmp) & 0xffff
 
             # Reconstruct the ICMP header with the correct checksum
-            return struct.pack('!bbHHh', self._type, self._code, checksum, self._id, 1)
+            return struct.pack('!bbHHh', self.type, self.code, checksum, self.id, 1)
 

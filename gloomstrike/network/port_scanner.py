@@ -37,12 +37,11 @@ class PortScanner:
         self._event = threading.Event()
         self._progress = 0
         self._retries = 0
-        self._logger = logger
 
         if valid_target := network.helpers.is_valid_host(target):
-            self.target : ipaddress._BaseAddress = valid_target
+            self.target = valid_target
         else:
-            self._logger.error(f'Invalid target "{target}"')
+            logger.log(f'Invalid target "{target}"', level=logger.Level.ERROR)
 
         if not ports:
             self.ports = TOP_20_PORTS
@@ -105,7 +104,7 @@ class PortScanner:
                     if (packet := sr1(ip_header / syn, timeout=(self.timeout / 1000) * (retry + 1), verbose=0)) != None \
                     and packet.haslayer(TCP) and packet[TCP].flags == network.Flags.SYN | network.Flags.ACK and port not in self._results:
 
-                        self._logger.info(f'Port {port} is open')
+                        logger.log(f'Port {port} is open', level=logger.Level.LOG)
                         self._results[port] = {'state': 'open', 'service': 'unknown'}
 
                         break
@@ -124,15 +123,15 @@ class PortScanner:
                     tcp = network.models.TcpHeader(ip_header=ip)
                     tcp._src_port = self.src_port
                     tcp._dst_port = port
-                    tcp._flags = network.Flags.SYN
-                    tcp._window = 5840
+                    tcp.flags = network.Flags.SYN
+                    tcp.window = 5840
 
                     packet = ip.pack() + tcp.pack()
 
                     try:
                         self.s.sendto(packet, (str(self.target), 0))
                     except Exception as e:
-                        self._logger.error(f'Failed to send SYN packet {e}')
+                        logger.log(f'Failed to send SYN packet {e}', level=logger.Level.ERROR)
 
             self._progress += 1
             time.sleep(self.timeout / 1000)
@@ -144,11 +143,11 @@ class PortScanner:
 
         This function should not be called on windows systems as raw TCP sockets is not supported.
         '''
-
+        
         while not self._event.is_set():
 
             # Use select to prevent s.recvfrom() from infinite blocking if nothing is being received.
-            read, write, error = select.select([self.s], [], [], 0)
+            read, write, error = select.select([self.s], [], [], 0.5)
             
             if not read:
                 continue
@@ -203,9 +202,9 @@ class PortScanner:
             logger.log('Permission error while creating socket', level=logger.Level.ERROR)
 
         # Rounds the round-trip-time to 2 decimal places for prettier output.
-        rtt = round(self.timeout, 2)
+        rtt = round(self.timeout - 100, 2)
 
-        logger.log(f'Average RTT: {rtt} ms', level=logger.Level.ERROR)
+        logger.log(f'Average RTT: {rtt} ms', level=logger.Level.INFO)
 
         # 25 Threads is created if the platform is windows.
         # 1 Thread is created if not windows.
@@ -232,10 +231,15 @@ class PortScanner:
                 self._event.set()
                 logger.log('Stopping threads...', level=logger.Level.INFO)
 
-        for thread in self._threads:
+        try:
 
-            thread.join()
+            for thread in self._threads:
+
+                thread.join()
             self._threads.remove(thread)
+
+        except KeyboardInterrupt:
+            pass
 
         return self._results
 
@@ -266,6 +270,7 @@ class PortScanner:
             
             self.s = socket.socket(family, socket.SOCK_RAW, socket.IPPROTO_TCP)
             self.s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+            self.s.bind(('0.0.0.0', 0))
 
             self.listener_thread = threading.Thread(target=self._listener)
             self.listener_thread.daemon = True

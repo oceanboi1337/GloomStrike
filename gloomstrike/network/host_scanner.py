@@ -25,7 +25,7 @@ class HostScanner:
         _background_thread (threading.Thread) Is the background thread used to run scans without blocking execution of the program.
 
     Methods:
-        start(protocol: network.Protocol, retries: int = 3, background: bool = False): Starts the network scan.
+        tart(protocol: network.Protocol, retries: int = 3, background: bool = False): Starts the network scan.
 
     '''
 
@@ -68,7 +68,7 @@ class HostScanner:
         # Makes sure all the required variables are set.
         self.ready = bool(
             self._target and
-            hasattr(self, 's')
+            hasattr(self, '_s')
         )
 
     def _fetch_details(self):
@@ -91,12 +91,12 @@ class HostScanner:
 
                 if manufacturer := network.helpers.device_lookup(mac):
 
-                    logger.log(f'Found manufacturer {host} -> {manufacturer}', level=logger.Level.INFO)
+                    logger.log(f'Found manufacturer {host} -> {manufacturer}', level=logger.Level.LOG)
                     self._results[host]['device'] = manufacturer
 
             if hostname := network.helpers.nslookup(ip, reverse=True):
 
-                logger.log(f'Found hostname {host} -> {hostname}', level=logger.Level.INFO)
+                logger.log(f'Found hostname {host} -> {hostname}', level=logger.Level.LOG)
                 self._results[host]['hostname'] = hostname
 
             else:
