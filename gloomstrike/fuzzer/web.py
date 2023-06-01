@@ -11,7 +11,6 @@ class UrlFuzzer:
     Attributes:
         _dirs (str): The path to directories wordlist.
         _files (str): The path to the files wordlist.
-        _exts (str): The path to the extensions wordlist.
         _threads (list[multithreading.Thread]): List of all the running threads.
         _targets (helpers.QueueHandler): The list of URLs to fuzz.
         _session (requests.Session): The session object used to make requests.
@@ -19,19 +18,16 @@ class UrlFuzzer:
         _handlers (dict): Dict that contains the list of directories and files to use.
     '''
 
-    def __init__(self, dirs: str, files: str, exts: str, logger: logger.Logger = None) -> None:
+    def __init__(self, dirs: str, files: str) -> None:
 
         '''
         Args:
            dirs (str): Path to the directory wordlist.
            files (str): Path to the files wordlist.
-           exts (str): Path to the extensions wordlist.
         '''
 
         self._dirs = dirs
         self._files = files
-        self._exts = exts
-        self._logger = logger
 
         self._threads = []
         self._results = []
@@ -43,15 +39,14 @@ class UrlFuzzer:
         self._handlers = {
             '_dirs': None,
             '_files': None
-            #'_exts': helpers.QueueHandler([])
         }
 
     def _load(self):
 
         '''
-        Loads the directories, files and extensions into memory.
+        Loads the directories and files into memory.
 
-        Iterates over the keys of _handlers to dynamically get the path for _dirs, _files and _exts.
+        Iterates over the keys of _handlers to dynamically get the path for _dirs and _files.
         
         Returns:
             bool: Returns False if it failed to read the files, True if successful.
@@ -76,12 +71,12 @@ class UrlFuzzer:
 
                         tmp.append(line)
                 
-                    # Create a new QueueHandler for the _dirs, _files or _exts
+                    # Create a new QueueHandler for the _dirs and _files
                     self._handlers[attr] = helpers.QueueHandler(tmp, max_size=0)
 
             except Exception as e:
 
-                self._logger.error(e)
+                logger.log(e, level=logger.Level.ERROR)
                 return False
         
         return True
@@ -112,7 +107,7 @@ class UrlFuzzer:
                 case 404:
                     return False
                 case 429:
-                    self._logger.warning('Too many requests')
+                    logger.log('Too many requests', level=logger.Level.WARNING)
                     return False
             
             if resp.ok:
@@ -121,13 +116,13 @@ class UrlFuzzer:
             return False
         
         except requests.exceptions.ConnectionError as e:
-            self._logger.error('Connection refused')
+            logger.log('Connection refused', level=logger.Level.ERROR)
         except requests.exceptions.RetryError as e:
             pass
         except requests.exceptions.Timeout as e:
-            self._logger.error('Request timeout')
+            logger.log('Request timeout', level=logger.Level.ERROR)
         except Exception as e:
-            self._logger.error(e)
+            logger.log(e, level=logger.Level.ERROR)
 
     def _process_request(self, resp : requests.Response):
 
@@ -156,19 +151,19 @@ class UrlFuzzer:
 
             # Check if the response was a redirect.
             case 301 | 302:
-                self._logger.warning(f'Code: {resp.status_code}\tSize: {size}\t\t{url} -> {location}')
+                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url} -> {location}', level=logger.Level.WARNING)
                 self._results.append(f'{url} -> {location}')
                 ret = location
             
             case _:
 
-                self._logger.info(f'Code: {resp.status_code}\tSize: {size}\t\t{url}')
+                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url}', level=logger.Level.INFO)
                 self._results.append(url)
                 ret = resp.url
 
         return ret
 
-    def _fuzzer(self, max_depth : int, threads : int):
+    def _fuzzer(self, max_depth : int):
 
         '''
         Iterates over the directories and files in the wordlists.
@@ -226,7 +221,7 @@ class UrlFuzzer:
 
             depth += 1
 
-        self._logger.warning(f'Exiting thread ({threading.current_thread().native_id})')
+        logger.log(f'Exiting thread ({threading.current_thread().native_id})', logger=logger.Level.INFO)
 
     def _worker(self):
 

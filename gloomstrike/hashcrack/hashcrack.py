@@ -83,7 +83,7 @@ class Hashcrack:
         _wordlist_path (str): Path to the wordlist.
     '''
 
-    def __init__(self, potfile: str=None, logger: logger.Logger=None) -> None:
+    def __init__(self, potfile: str=None) -> None:
 
         '''
         Initializes the variables needed to run.
@@ -93,7 +93,6 @@ class Hashcrack:
         '''
 
         self._potfile = potfile
-        self._logger = logger
 
         self._processors = os.cpu_count() - 1
         self._processes : list(multiprocessing.Process) = []
@@ -141,7 +140,7 @@ class Hashcrack:
         
         except Exception as e:
 
-            self._logger.error(f'Failed to read file {wordlist}')
+            logger.log(f'Failed to read file {wordlist}', level=logger.Level.ERROR)
             return False
 
     def load_hashes(self, hashes: str | list):
@@ -178,7 +177,7 @@ class Hashcrack:
             return True
 
         except Exception as e:
-            self._logger.error(f'Failed to load hashes: {e}')
+            logger.log(f'Failed to load hashes: {e}', level=logger.Level.ERROR)
 
     def _watcher(self):
 
@@ -205,7 +204,7 @@ class Hashcrack:
                 # How long it took to crack the hash
                 crack_time = round(time.time() - start_time, 2)
 
-                self._logger.info(f'Cracked Hash in {crack_time} sec {hash} -> {word}')
+                logger.log(f'Cracked Hash in {crack_time} sec {hash} -> {word}', level=logger.Level.LOG)
                 log_list.append(hash)
 
             # Checks if there are any running processes left
@@ -219,7 +218,7 @@ class Hashcrack:
 
             time.sleep(1 / 1000)
 
-        self._logger.warning(f'Killing processes')
+        logger.log(f'Killing processes', level=logger.Level.WARNING)
 
         # Convert the results to a normal dict
         self._results = dict(self._results)
@@ -258,11 +257,11 @@ class Hashcrack:
         # Check if the algorithm is available in hashlib.
         if algorithm not in hashlib.algorithms_available:
             
-            self._logger.error(f'Hashing algorithm {algorithm} is not available')
+            logger.log(f'Hashing algorithm {algorithm} is not available', level=logger.Level.ERROR)
             return False
 
-        self._logger.info(f'Logical CPUs: {self._processors + 1}')
-        self._logger.info(f'Using {self._processors}')
+        logger.log(f'Logical CPUs: {self._processors + 1}', level=logger.Level.INFO)
+        logger.log(f'Using {self._processors}', level=logger.Level.INFO)
 
         # How many bytes from the wordlist each process should read.
         increment = int(self._wordlist_size / self._processors)
@@ -283,7 +282,7 @@ class Hashcrack:
 
             self._processes.append(proc)
 
-            self._logger.info(f'Started {proc.name}')
+            logger.log(f'Started {proc.name}', level=logger.Level.INFO)
 
         if background:
 

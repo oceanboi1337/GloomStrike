@@ -23,7 +23,7 @@ class PortScanner:
         _retries (int): How many times to retry a port scan.
     '''
 
-    def __init__(self, target: str, ports: str=None, logger: logger.Logger=None) -> None:
+    def __init__(self, target: str, ports: str=None) -> None:
         
         '''
         The init method takes the target and ports (seperated by ,) to scan.
@@ -175,7 +175,7 @@ class PortScanner:
 
                 port = int(tcp.src_port)
 
-                self._logger.info(f'Port {port} is open')
+                logger.log(f'Port {port} is open', level=logger.Level.INFO)
                 self._results[port] = {'state': 'open', 'service': 'unknown  '}
 
     def stop(self):
@@ -195,17 +195,17 @@ class PortScanner:
 
         '''
 
-        self._logger.info('Calculating Average RTT...')
+        logger.log('Calculating Average RTT...', level=logger.Level.INFO)
 
         try:
             self.timeout = network.helpers.avg_rtt(self.target) + 100
         except PermissionError:
-            self._logger.error('Permission error while creating socket')
+            logger.log('Permission error while creating socket', level=logger.Level.ERROR)
 
         # Rounds the round-trip-time to 2 decimal places for prettier output.
         rtt = round(self.timeout, 2)
 
-        self._logger.info(f'Average RTT: {rtt} ms')
+        logger.log(f'Average RTT: {rtt} ms', level=logger.Level.ERROR)
 
         # 25 Threads is created if the platform is windows.
         # 1 Thread is created if not windows.
@@ -230,7 +230,7 @@ class PortScanner:
 
             except KeyboardInterrupt:
                 self._event.set()
-                self._logger.warning('Stopping threads...')
+                logger.log('Stopping threads...', level=logger.Level.INFO)
 
         for thread in self._threads:
 

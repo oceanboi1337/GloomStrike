@@ -29,7 +29,7 @@ class HostScanner:
 
     '''
 
-    def __init__(self, target : str, logger : logger.Logger=None) -> None:
+    def __init__(self, target : str) -> None:
 
         '''
         Checks if the target CIDR is valid and generates a list of hosts from it.
@@ -43,17 +43,16 @@ class HostScanner:
         self._threads = []
         self._results = {}
         self._progress = 0
-        self._logger = logger
         self._event = threading.Event()
 
         self._target = network.helpers.is_valid_network(target)
 
         if not self._target:
-            self._logger.error(f'Invalid target {target}')
+            logger.log(f'Invalid target {target}', level=logger.Level.ERROR)
 
         else:
 
-            self._logger.info('Generating host list')
+            logger.log('Generating host list', level=logger.Level.INFO)
             self._hosts = helpers.QueueHandler([host for host in self._target.hosts()])
 
         try:
@@ -64,7 +63,7 @@ class HostScanner:
             self._s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
 
         except Exception as e:
-            self._logger.error('Failed to setup socket: {e}')
+            logger.log('Failed to setup socket: {e}', level=logger.Level.ERROR)
 
         # Makes sure all the required variables are set.
         self.ready = bool(
@@ -92,16 +91,16 @@ class HostScanner:
 
                 if manufacturer := network.helpers.device_lookup(mac):
 
-                    self._logger.info(f'Found manufacturer {host} -> {manufacturer}')
+                    logger.log(f'Found manufacturer {host} -> {manufacturer}', level=logger.Level.INFO)
                     self._results[host]['device'] = manufacturer
 
             if hostname := network.helpers.nslookup(ip, reverse=True):
 
-                self._logger.info(f'Found hostname {host} -> {hostname}')
+                logger.log(f'Found hostname {host} -> {hostname}', level=logger.Level.INFO)
                 self._results[host]['hostname'] = hostname
 
             else:
-                self._logger.error(f'Reverse nslookup failed for {host}')
+                logger.log(f'Reverse nslookup failed for {host}', level=logger.Level.WARNING)
 
     def _gather_details(self):
 
@@ -221,7 +220,7 @@ class HostScanner:
                     self._progress += 1
 
                 except Exception as e:
-                    self._logger.error(f'Error while sending packet to {host} {e}')
+                    logger.log(f'Error while sending packet to {host} {e}', level=logger.Level.ERROR)
 
                 try:
                     time.sleep(1 / 1000)
@@ -242,14 +241,14 @@ class HostScanner:
         Uses Scapy's API to send ARP packets and receive responses.
         '''
 
-        self._logger.info(f'Sending ARP packets...')    
+        logger.log(f'Sending ARP packets...', level=logger.Level.INFO)
         
         eth = Ether(dst='ff:ff:ff:ff:ff:ff')
         arp = ARP(pdst=[str(host) for host in self._hosts]) # Sets the destination to all the hosts in the CIDR range.
 
         answers, unanswered = srp(eth / arp, timeout=3, verbose=0, promisc=False)
 
-        self._logger.info(f'Processing {len(answers)} answers')
+        logger.log(f'Processing {len(answers)} answers', level=logger.Level.INFO)
 
         # Iterate of the answers and unpack the send and recv data.
         for send, recv in answers:
@@ -300,7 +299,7 @@ class HostScanner:
                 worker = self._icmp_discover# Sets the worker callable to _icmp_discover.
 
         if not worker:
-            self._logger.error(f'Invalid protocol detected')
+            logger.log(f'Invalid protocol detected', level=logger.Level.ERROR)
             return
         
         if background:

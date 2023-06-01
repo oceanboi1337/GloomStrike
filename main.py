@@ -1,16 +1,16 @@
 import argparse, sys, hashlib
 from gloomstrike import hashcrack, network, fuzzer, checker, logger
 
-def f_network(args: argparse.Namespace, logger: logger.Logger):
+def f_network(args: argparse.Namespace):
 
     protocol = None
 
-    if args.arp: protocol = network.Protocol.ARP
+    if args.arp:    protocol = network.Protocol.ARP
     elif args.icmp: protocol = network.Protocol.ICMP
 
     if args.port_scan:
 
-        port_scanner = network.PortScanner(args.target, args.port, logger=logger)
+        port_scanner = network.PortScanner(args.target, args.port)
 
         if port_scanner.ready:
             port_scanner.scan(background=False)
@@ -19,14 +19,14 @@ def f_network(args: argparse.Namespace, logger: logger.Logger):
 
     if args.discovery:
 
-        host_scanner = network.HostScanner(args.target, logger=logger)
+        host_scanner = network.HostScanner(args.target)
 
         if host_scanner.ready:
             host_scanner.start(protocol, background=False)
 
         return host_scanner._results
 
-def f_hashcrack(args: argparse.Namespace, logger: logger.Logger):
+def f_hashcrack(args: argparse.Namespace):
 
     if args.al:
 
@@ -35,28 +35,42 @@ def f_hashcrack(args: argparse.Namespace, logger: logger.Logger):
 
         return
     
-    cracker = hashcrack.Hashcrack(logger=logger)
+    cracker = hashcrack.Hashcrack()
 
     if cracker.load_hashes(args.f) and cracker.load_wordlist(args.w):
 
         return cracker.start(args.a, background=False)
     
-def f_fuzzer(args: argparse.Namespace, logger: logger.Logger):
+def f_fuzzer(args: argparse.Namespace):
 
-    #url_fuzzer = fuzzer.UrlFuzzer(args.target, args.wordlist, args.timeout, args.status_code, logger=logger)
-    url_fuzzer = fuzzer.UrlFuzzer(args.dirs, args.files, 'wordlists/fuzzer/extensions_common.txt', logger=logger)
-    url_fuzzer.start(args.target, threads=args.threads)
+    if args.sub and args.sw:
+
+        sub_fuzzer = fuzzer.SubFuzzer(args.target, args.sw)
+
+        if not sub_fuzzer._load():
+            logger.log('Failed to load subdomains', level=logger.Level.ERROR); return
+
+        results = sub_fuzzer.start(args.threads, background=False)
+    
+    elif args.sub and not args.sw:
+        logger.log('No subdomains wordlist was entered', level=logger.Level.ERROR); return
+    
+    elif not args.sub and not args.sw:
+
+        #url_fuzzer = fuzzer.UrlFuzzer(args.target, args.wordlist, args.timeout, args.status_code, logger=logger)
+        url_fuzzer = fuzzer.UrlFuzzer(args.dirs, args.files)
+        url_fuzzer.start(args.target, threads=args.threads)
 
 
-def f_checker(args: argparse.Namespace, logger: logger.Logger):
+def f_checker(args: argparse.Namespace):
 
     if not args.csrf and args.csrf_url:
-        logger.error('--csrf argument missing'); return
+        logger.log('--csrf argument missing', level=logger.Level.ERROR); return
 
     if not args.csrf_url and args.csrf:
-        logger.error('--csrf-url argument missing'); return
+        logger.log('--csrf-url argument missing', level=logger.Level.ERROR); return
 
-    http_checker = checker.HttpChecker(args.target, args.params, args.csrf, args.csrf_url, logger)
+    http_checker = checker.HttpChecker(args.target, args.params, args.csrf, args.csrf_url)
 
     if http_checker.load(args.combolist, args.usernames, args.passwords, args.proxies):
         http_checker.start(threads=args.threads, background=False)
@@ -90,6 +104,8 @@ if __name__ == '__main__':
     p_fuzzer.add_argument('-d', '--dirs', help='Path to directories wordlist', default='wordlists/fuzzer/dirs/raft-large-directories-lowercase.txt')
     p_fuzzer.add_argument('-t', '--timeout', help='Timeout limit for a request <seconds>')
     p_fuzzer.add_argument('-s', '--status-code', help='List of status codes to check for <200,404,401>')
+    p_fuzzer.add_argument('-sw', help='Path to the subdomains to fuzz')
+    p_fuzzer.add_argument('--sub', help='Will use the sub domain fuzzer instead', action='store_true')
     p_fuzzer.add_argument('--depth', help='Max recursive depth (Default 2)', default=0, type=int)
     p_fuzzer.add_argument('--threads', help='Amount of threads to use', default=25, type=int)
     p_fuzzer.add_argument('target', help='Target URL to fuzz')
@@ -107,7 +123,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    _logger = logger.Logger(verbose=args.verbose)
+    logger.verbose = args.verbose
 
     if not args.module:
 
@@ -116,7 +132,7 @@ if __name__ == '__main__':
 
     match args.module.lower():
 
-        case 'network': result = f_network(args, _logger)
-        case 'hashcrack': result = f_hashcrack(args, _logger)
-        case 'fuzzer': result = f_fuzzer(args, _logger)
-        case 'checker': result = f_checker(args, _logger)
+        case 'network': result = f_network(args)
+        case 'hashcrack': result = f_hashcrack(args)
+        case 'fuzzer': result = f_fuzzer(args)
+        case 'checker': result = f_checker(args)

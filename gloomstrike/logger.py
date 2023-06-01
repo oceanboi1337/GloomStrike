@@ -1,25 +1,25 @@
 import enum
 from gloomstrike import ansi
 
-class Level(enum.IntEnum):
-    
-    INFO = 1
-    WARNING = 2
-    ERROR = 3
+class Level(enum.Enum):
+    LOG = 1
+    INFO = 2
+    WARNING = 3
+    ERROR = 4
 
-class Logger:
+verbose = 0
 
-    def __init__(self, verbose : Level) -> None:
-        self.verbose = verbose
+def log(string: str, style: str='', end: str='\n', flush: bool = True, level: Level = Level.LOG):
 
-    def info(self, string, esc: str = '', end: str = '\n', flush: bool = True):
-        if self.verbose >= Level.INFO:
-            print(f'{esc}{ansi.Color.Green}[INFO]: {string}{ansi.Color.Reset}', end=end, flush=flush)
+    color = ansi.Color.Blue
+    head = f'[{level.name}]'
 
-    def warning(self, string, esc: str = '', end: str = '\n', flush: bool = True):
-        if self.verbose >= Level.WARNING:
-            print(f'{esc}{ansi.Color.Yellow}[WARNING]: {string}{ansi.Color.Reset}', end=end)
-    
-    def error(self, string, esc: str = '', end: str = '\n', flush: bool = True):
-        if self.verbose >= Level.WARNING:
-            print(f'{esc}{ansi.Color.Red}[ERROR]: {string}{ansi.Color.Reset}', end=end)
+    match level:
+        case Level.INFO:
+            color = ansi.Color.Green
+        case Level.WARNING:
+            color = ansi.Color.Yellow
+        case Level.ERROR:
+            color = ansi.Color.Red
+
+    print(f'{color}{head}: {style}{string}', end=end, flush=flush)

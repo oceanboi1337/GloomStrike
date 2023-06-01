@@ -24,7 +24,7 @@ class Proxy:
 
 class HttpChecker:
 
-    def __init__(self, url: str, params: str, csrf: str=None, csrf_url: str=None, logger: logger.Logger=None) -> None:
+    def __init__(self, url: str, params: str, csrf: str = None, csrf_url: str = None) -> None:
 
         '''
         Creates a HttpChecker object used to check logins.
@@ -40,7 +40,6 @@ class HttpChecker:
         self._params = params
         self._csrf = csrf
         self._csrf_url = csrf_url
-        self._logger = logger
         
         self._credentials = helpers.QueueHandler()
         self._event = threading.Event()
@@ -91,7 +90,7 @@ class HttpChecker:
                             self._credentials.add([username.decode('utf-8'), password.decode('utf-8')])
 
                         except UnicodeDecodeError as r:
-                            self._logger.error(f'Failed to decode {line}: {e}')
+                            logger.log(f'Failed to decode {line}: {e}', level=logger.Level.ERROR)
                     
                 return True
             
@@ -119,12 +118,12 @@ class HttpChecker:
                             self._credentials.add([username.decode('utf-8'), password.decode('utf-8')])
 
                         except UnicodeDecodeError as r:
-                            self._logger.error(f'Failed to decode {line}: {e}')
+                            logger.log(f'Failed to decode {line}: {e}', level=logger.Level.ERROR)
 
                 return True
 
         except Exception as e:
-            self._logger.error(e)
+            logger.log(e, level=logger.Level.ERROR)
 
         return False
 
@@ -200,11 +199,11 @@ class HttpChecker:
             resp = requests.get(self._csrf_url)
             
         except requests.ConnectTimeout:
-            self._logger.error(f'Connection to {self._csrf_url} timeout')
+            logger.log(f'Connection to {self._csrf_url} timeout', level=logger.Level.ERROR)
         except requests.ConnectionError:
-            self._logger.error(f'Connection to {self._csrf_url} failed')
+            logger.log(f'Connection to {self._csrf_url} failed', level=logger.Level.ERROR)
         except Exception as e:
-            self._logger.error(f'Error while requesting {self._csrf_url}')
+            logger.log(f'Error while requesting {self._csrf_url}', level=logger.Level.ERROR)
 
         if not resp.ok:
             return None
@@ -272,12 +271,12 @@ class HttpChecker:
             if self._event.is_set():
                 break
 
-            self._logger.info(f'{username}:{password}', end='\r', flush=True)
+            logger.log(f'{username}:{password}', level=logger.Level.ERROR, end='\r', flush=True)
 
             if self._check(self._url, username, password):
 
                 self._results.append([username, password])
-                self._logger.info(f'Found valid credentials "{username}:{password}"')
+                logger.log(f'Found valid credentials "{username}:{password}"', level=logger.Level.INFO)
 
         self._event.set()
 
@@ -285,7 +284,7 @@ class HttpChecker:
 
     def start(self, threads: int, background: bool=False) -> bool:
 
-        self._logger.info('Starting threads...')
+        logger.info('Starting threads...', level=logger.Level.LOG)
 
         for _ in range(threads):
 

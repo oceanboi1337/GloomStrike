@@ -2,9 +2,10 @@
 ## Features
 * 🚧 Argument Parsing
     * ✅ Network Mapper
-    * 🚧 Hash Cracker
-    * 🚧 URL Fuzzer
-    * 🚧 Login Checker
+    * ✅ Hash Cracker
+    * ✅ URL Fuzzer
+    * ✅ Login Checker
+    * ✅ Subdomain Fuzzer
 * ✅ Network Mapper
     * ✅ SYN Port Scanner
     * ✅ ICMP Host Scanning
@@ -17,12 +18,12 @@
 * ✅ URL Fuzzer
     * ✅ Multithreading
     * ✅ Recursive Fuzzing
-    * 🚧 Status Code Filtering
+    * ✅ Status Code Filtering
 * ✅ Hash Cracker
     * ✅ Multiprocessing
     * 🚧 Potfile
-* 🚧 Login Checker
+* ✅ Login Checker
     * ✅ Multithreading
     * ✅ User Defined Parameters
-    * 🚧 
+    * ✅ CSRF Handling
 * ❌ GUI
