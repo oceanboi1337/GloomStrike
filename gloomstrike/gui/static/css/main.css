@@ -1,13 +1,14 @@
 :root {
-	--dark: #1a1a1a;
-	--secondary: #1a1a1a;
+	--dark: #101010;
+	--dark2: #1a1a1a;
+	--secondary: #121212;
 	--accent: #33ff33;
-	--accent2: #33ff33;
+	--accent2: #33ff55;
 	--fore: #262626;
 }
 
 html, body {
-	background: var(--dark);
+	background: var(--dark2);
 	height: 100vh;
 	width: 100vw;
 	overflow: hidden !important;
@@ -18,7 +19,20 @@ html, body {
 }
 
 .navbar-item:hover {
-	background-color: var(--accent2) !important;
+	background-color: var(--secondary) !important;
+	color: var(--accent) !important;
+}
+
+.navbar-item:hover .icon i, .navbar-item:hover span {
+	color: var(--accent) !important;
+}
+
+.navbar-item.is-active {
+	background-color: var(--secondary) !important;
+}
+
+.navbar-item.is-active .icon i, .navbar-item.is-active span {
+	color: var(--accent) !important;
 }
 
 * {
@@ -29,12 +43,28 @@ html, body {
 	color: var(--accent2) !important;
 }
 
+.has-dark {
+	color: var(--dark) !important;
+}
+
+.has-background-dark {
+	background-color: var(--dark) !important;
+}
+
+.has-background-dark2 {
+	background-color: var(--dark2) !important;
+}
+
+.has-background-secondary {
+	background-color: var(--secondary) !important;
+}
+
 .has-accent {
 	color: var(--accent) !important;
 }
 
-.box {
-	background-color: var(--fore) !important;
+.has-accent2 {
+	color: var(--accent2) !important;
 }
 
 ::placeholder {
@@ -56,7 +86,7 @@ html, body {
 }
 
 .input {
-	background-color: var(--secondary) !important;
+	background-color: var(--dark2) !important;
 	border: solid 1px var(--fore) !important;
 	color: var(--accent2) !important;
 }

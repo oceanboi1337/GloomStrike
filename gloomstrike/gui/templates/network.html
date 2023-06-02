@@ -24,7 +24,7 @@
                             </span>
                             <span>Dashboard</span>
                         </a>
-                        <a class='navbar-item' href='/network'>
+                        <a class='navbar-item is-active' href='/network'>
                             <span class='icon'>
                                 <i class="fa-solid fa-network-wired"></i>
                             </span>
@@ -48,15 +48,21 @@
                             </span>
                             <span>Login Checker</span>
                         </a>
+                        <a class="navbar-item" href="/scans">
+                            <span class='icon'>
+                                <i class="fa-solid fa-satellite-dish"></i>
+                            </span>
+                            <span>Active Scans</span>
+                        </a>
                     </div>
                 </div>
             </nav>
         </section>
         <section class='container mt-4'> 
             <div class='columns'>
-                <div class='column is-8'>
+                <div class='column'>
                     <h1 class='subtitle has-fore has-text-centered'>Port Scanner</h1>
-                    <div class='box'>
+                    <div class='mb-5 box has-background-dark'>
                         <form method='POST' action='/network'>
                             <div class='field'>
                                 <div class='control has-icons-left'>
@@ -68,12 +74,13 @@
                             </div>
                             <div class='field'>
                                 <div class='control has-icons-left mt-4'>
-                                    <input class='input' type='text' name='ports' placeholder='Ports: 21,22,53,...' required>
+                                    <input class='input' type='text' name='ports' placeholder='Ports: 21,22,53 (Optional)'>
                                     <span class='icon is-small is-left'>
                                         <i class="fa-sharp fa-solid fa-list has-accent"></i>
                                     </span>
                                 </div>
                             </div>
+                            <input type="text" name="ps" value="1" hidden>
                             <div class='field'>
                                 <div class='control'>
                                     <button class='button input'>Scan</button>
@@ -82,7 +89,7 @@
                         </form>
                     </div>
                     <h1 class='subtitle has-fore has-text-centered'>Host Scanner</h1>
-                    <div class='box'>
+                    <div class='box has-background-dark'>
                         <form method='POST' action='/network'>
                             <div class='field'>
                                 <div class='control has-icons-left'>
@@ -95,7 +102,7 @@
                             <div class='field'>
                                 <div class="control">
                                     <label class="radio has-fore">
-                                        <input type="radio" name="protocol">
+                                        <input type="radio" name="protocol" checked>
                                         ARP
                                     </label>
                                     <label class="radio has-fore">
@@ -104,18 +111,13 @@
                                     </label>
                                 </div>
                             </div>
+                            <input type="text" name="d" value="1" hidden>
                             <div class='field'>
                                 <div class='control'>
                                     <button class='button input'>Scan</button>
                                 </div>
                             </div>
                         </form>
-                    </div>
-                </div>
-                <div class='column'>
-                    <h1 class='subtitle has-fore has-text-centered'>Active Scans</h1>
-                    <div class='box is-fullheight results-box'>
-
                     </div>
                 </div>
             </div>

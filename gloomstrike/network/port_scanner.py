@@ -73,7 +73,7 @@ class PortScanner:
         '''
         Calculates the scan progress in percentage and returns it.
         '''
-        return round((self._progress / self._queue.queue.maxsize) * 100, 2)
+        return round((self._progress / self._queue._queue.maxsize) * 100, 2)
 
     def _syn_scan(self):
 

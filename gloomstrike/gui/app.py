@@ -1,5 +1,8 @@
 import flask, threading
+from flask_socketio import SocketIO
 from gloomstrike import logger
+
+running_tasks = {}
 
 class WebServer:
 
@@ -11,7 +14,7 @@ class WebServer:
         self._app = flask.Flask('GloomStrike',
                                 template_folder='gloomstrike/gui/templates',
                                 static_folder='gloomstrike/gui/static')
-
+        
         self._app.config['TEMPLATES_AUTO_RELOAD'] = True
         self._app_thread = None
 

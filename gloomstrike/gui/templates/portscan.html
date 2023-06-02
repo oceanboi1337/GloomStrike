@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html lang='en'>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <meta http-equiv='X-UA-Compatible' content='ie=edge'>
+        <title>GloomStrike | Scans</title>
+        <link rel='stylesheet' href='/static/css/main.css'>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    </head>
+    <body>
+        <section>
+            <nav class='navbar' role='navigation'>
+                <div class='navbar-brand'>
+                    <a class='navbar-item' href='/'>GloomStrike</a>
+                </div>
+                <div class='navbar-menu'>
+                    <div class='navbar-start'>
+                        <a class='navbar-item' href='/dasboard'>
+                            <span class='icon'>
+                                <i class="fa-solid fa-table-columns"></i>
+                            </span>
+                            <span>Dashboard</span>
+                        </a>
+                        <a class='navbar-item' href='/network'>
+                            <span class='icon'>
+                                <i class="fa-solid fa-network-wired"></i>
+                            </span>
+                            <span>Network Mapper</span>
+                        </a>
+                        <a class='navbar-item' href='/hashcrack'>
+                            <span class='icon'>
+                                <i class="fa-solid fa-hashtag"></i>
+                            </span>
+                            <span>Hash Cracker</span>
+                        </a>
+                        <a class='navbar-item' href='/fuzzer'>
+                            <span class='icon'>
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <span>URL Fuzzer</span>
+                        </a>
+                        <a class='navbar-item' href='/checker'>
+                            <span class='icon'>
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <span>Login Checker</span>
+                        </a>
+                        <a class="navbar-item is-active" href="/scans">
+                            <span class='icon'>
+                                <i class="fa-solid fa-satellite-dish"></i>
+                            </span>
+                            <span>Active Scans</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </section>
+        <section class='container mt-5 pt-5'>
+            <h1 class="title is-size-4 has-text-centered has-accent2">Scan: {{hash}}</h1>
+            <h1 class="title is-size-4 has-text-centered has-accent2">Target: {{object.target}}</h1>
+            <h1 class="title is-size-4 has-text-centered has-accent2">Progress: {{progress}}%</h1>
+            <div class="columns">
+                <div class="column">
+                    <a href="/scans/{{hash}}?action=delete" class="button is-danger is-fullwidth">Delete</a>
+                </div>
+                <div class="column">
+                    <a href="/scans/{{hash}}?action=stop" class="button is-warning is-fullwidth">Stop</a>
+                </div>
+            </div>
+            <div class="box has-background-dark">
+                {% for port, details in object._results.items() %}
+                    <div class="box has-background-dark2">
+                        <h1 class="subtitle is-size-5 has-accent2">Port: {{port}}</h1>
+                        <h1 class="subtitle is-size-5 has-accent2">State: {{details['state']}}</h1>
+                        <h1 class="subtitle is-size-5 has-accent2">Service: {{details['service']}}</h1>
+                    </div>
+                {% endfor %}
+            </div>
+            <a href=""></a>
+        </section>
+    </body>
+</html>
