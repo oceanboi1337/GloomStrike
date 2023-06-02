@@ -1,0 +1,62 @@
+:root {
+	--dark: #1a1a1a;
+	--secondary: #1a1a1a;
+	--accent: #33ff33;
+	--accent2: #33ff33;
+	--fore: #262626;
+}
+
+html, body {
+	background: var(--dark);
+	height: 100vh;
+	width: 100vw;
+	overflow: hidden !important;
+}
+
+.navbar {
+	background-color: var(--accent) !important;
+}
+
+.navbar-item:hover {
+	background-color: var(--accent2) !important;
+}
+
+* {
+	color: var(--fore) !important;
+}
+
+.has-fore {
+	color: var(--accent2) !important;
+}
+
+.has-accent {
+	color: var(--accent) !important;
+}
+
+.box {
+	background-color: var(--fore) !important;
+}
+
+::placeholder {
+	color: var(--accent) !important;
+	opacity: 0.5 !important;
+}
+
+:-ms-input-placeholder {
+	color: var(--accent) !important;
+	opacity: 0.5 !important;
+}
+
+.results-box {
+	position: relative !important;
+}
+
+.is-fullheight {
+	height: 100% !important;
+}
+
+.input {
+	background-color: var(--secondary) !important;
+	border: solid 1px var(--fore) !important;
+	color: var(--accent2) !important;
+}

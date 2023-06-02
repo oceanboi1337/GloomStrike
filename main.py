@@ -1,5 +1,23 @@
-import argparse, sys, hashlib
-from gloomstrike import hashcrack, network, fuzzer, checker, logger
+import argparse, sys, hashlib, time
+from gloomstrike import hashcrack, network, fuzzer, checker, logger, gui
+from gloomstrike.gui import routes
+
+def f_gui(args: argparse.Namespace):
+
+    logger.log('Starting GUI server...', level=logger.Level.INFO)
+
+    server = gui.WebServer('127.0.0.1', 1337)
+
+    server.add_router('/', 'index', routes.index.router)
+    server.add_router('/network', 'network', routes.network.router)
+
+    if server.start():
+
+        logger.log('Started GUI server at: {server._host}')
+
+    while 1:
+        
+        time.sleep(1)
 
 def f_network(args: argparse.Namespace):
 
@@ -122,6 +140,8 @@ if __name__ == '__main__':
     p_checker.add_argument('-c', '--combolist', help='Path to a file with username:password')
     p_checker.add_argument('target', help='Target URL to check logins for')
 
+    p_gui = subparsers.add_parser('gui', help='Enable GUI for the tool')
+
     args = parser.parse_args()
 
     logger.verbose = args.verbose
@@ -137,3 +157,4 @@ if __name__ == '__main__':
         case 'hashcrack': result = f_hashcrack(args)
         case 'fuzzer': result = f_fuzzer(args)
         case 'checker': result = f_checker(args)
+        case 'gui': f_gui(args)

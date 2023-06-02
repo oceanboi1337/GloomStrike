@@ -2,10 +2,10 @@ import enum
 from gloomstrike import ansi
 
 class Level(enum.Enum):
-    LOG = 1
-    INFO = 2
-    WARNING = 3
-    ERROR = 4
+    LOG = 0
+    INFO = 1
+    WARNING = 2
+    ERROR = 3
 
 verbose = 0
 
@@ -21,5 +21,8 @@ def log(string: str, style: str='', end: str='\n', flush: bool = True, level: Le
             color = ansi.Color.Yellow
         case Level.ERROR:
             color = ansi.Color.Red
+
+    if verbose < level.value:
+        return
 
     print(f'{color}{head}: {style}{string}', end=end, flush=flush)
