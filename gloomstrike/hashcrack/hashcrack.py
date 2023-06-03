@@ -100,6 +100,7 @@ class Hashcrack:
         self._manager = multiprocessing.Manager()
         self._results = self._manager.dict()
         self._hashes = []
+        self._hashes_length = 0
 
         self._wordlist_size = 0
         self._wordlist_path = None
@@ -159,6 +160,7 @@ class Hashcrack:
         # Skip the file reading if its a list.
         if type(hashes) == list:
             self._hashes = hashes
+            self._hashes_length = len(hashes)
             return True
 
         try:
@@ -173,6 +175,8 @@ class Hashcrack:
                     line = line.rstrip().decode()
 
                     self._hashes.append(line)
+
+            self._hashes_length = len(self._hashes)
 
             return True
 
@@ -264,6 +268,10 @@ class Hashcrack:
 
         except Exception as e:
             logger.log(f'Failed to add to potfile: {e}', level=logger.Level.ERROR)
+
+    @property
+    def progress(self):
+        return round((len(self._results) / self._hashes_length) * 100, 2)
 
     def start(self, algorithm : str, background : bool=False):
 
