@@ -39,3 +39,5 @@ def get_int(id):
 
         case network.PortScanner:
             return flask.render_template('portscan.html', hash=id, object=_object, type=_type, progress=_object.progress)
+        case network.HostScanner:
+            return flask.render_template('hostscan.html', hash=id, object=_object, type=_type, progress=_object.progress)

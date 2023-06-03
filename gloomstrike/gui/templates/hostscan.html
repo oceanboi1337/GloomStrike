@@ -67,7 +67,7 @@
                 </div>
                 <div class="column">
                     <div class="box has-background-dark">
-                        <h1 class="is-size-5 has-text-centered has-accent2">Target: {{object.target}}</h1>
+                        <h1 class="is-size-5 has-text-centered has-accent2">Target: {{object._target}}</h1>
                     </div>
                 </div>
                 <div class="column">
@@ -85,13 +85,18 @@
                 </div>
             </div>
             <div class="box has-background-dark">
-                {% for port, details in object._results.items() %}
-                    <div class="box has-background-dark2">
-                        <h1 class="subtitle is-size-5 has-accent2">Port: {{port}}</h1>
-                        <h1 class="subtitle is-size-5 has-accent2">State: {{details['state']}}</h1>
-                        <h1 class="subtitle is-size-5 has-accent2">Service: {{details['service']}}</h1>
+                <div class="columns is-multiline">
+                {% for host, details in object._results.items() %}
+                    <div class="column is-half">
+                        <div class="box has-background-dark2">
+                            <h1 class="subtitle is-size-6 has-accent2">Host: {{host}}</h1>
+                            <h1 class="subtitle is-size-6 has-accent2">MAC: {{details['mac']}}</h1>
+                            <h1 class="subtitle is-size-6 has-accent2">Device: {{details['device']}}</h1>
+                            <h1 class="subtitle is-size-6 has-accent2">Hostname: {{details['hostname']}}</h1>
+                        </div>
                     </div>
                 {% endfor %}
+                </div>
             </div>
             <a href=""></a>
         </section>

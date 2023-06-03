@@ -1,5 +1,4 @@
 import flask, threading
-from flask_socketio import SocketIO
 from gloomstrike import logger
 
 running_tasks = {}

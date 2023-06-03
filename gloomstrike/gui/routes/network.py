@@ -19,13 +19,26 @@ def post():
         if not port_scanner.ready or not port_scanner.scan(background=True):
             return flask.render_template('network.html', {'error': 'Failed to start scan'})
         
-        app.running_tasks[id] = {'type': 'PortScan', 'object': port_scanner}
+        app.running_tasks[id] = {'type': 'Port Scan', 'object': port_scanner}
 
         return flask.redirect(f'/scans/{id}')
     
     elif flask.request.form.get('d'):
 
-        print('Host scanner')
+        host_scanner = network.HostScanner(target)
+        id = hash(host_scanner)
+
+        protocol = network.Protocol.ARP
+
+        if flask.request.form.get('protocol') == 'icmp':
+            protocol = network.Protocol.ICMP
+
+        if not host_scanner.ready or not host_scanner.start(protocol=protocol, background=True):
+            return flask.render_template('network.html', {'error': 'Failed to start scan'})
+        
+        app.running_tasks[id] = {'type': 'Host Scan', 'object': host_scanner}
+
+        return flask.redirect(f'/scans/{id}')
 
     return flask.render_template('network.html')
 

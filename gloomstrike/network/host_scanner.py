@@ -183,7 +183,13 @@ class HostScanner:
 
         src = network.helpers.default_interface()
 
+        first = True
+
         for host in self._target:
+
+            if first:
+                first = False
+                continue
 
             # Filter out broadcast address.
             if host == self._target.broadcast_address:
@@ -217,7 +223,6 @@ class HostScanner:
 
                     # Combines the IP/ICMP headers into a packet and sends it.
                     self._s.sendto(ip.pack() + icmp.pack(), (str(host), 0))
-                    self._progress += 1
 
                 except Exception as e:
                     logger.log(f'Error while sending packet to {host} {e}', level=logger.Level.ERROR)
@@ -228,10 +233,17 @@ class HostScanner:
                     self._event.set()
                     return
 
+            self._progress += 1
+
         # Hosts to find hostname for.
         self.nslookup_list = helpers.QueueHandler([x for x in self._results.items()])
 
         self._gather_details()
+
+    @property
+    def progress(self):
+        print(self._progress, len(self._hosts._items))
+        return round((self._progress / len(self._hosts._items)) * 100, 2)
 
     def _arp_discover(self):
 
@@ -250,6 +262,8 @@ class HostScanner:
 
         logger.log(f'Processing {len(answers)} answers', level=logger.Level.INFO)
 
+        self._progress += len(unanswered)
+
         # Iterate of the answers and unpack the send and recv data.
         for send, recv in answers:
 
@@ -263,6 +277,7 @@ class HostScanner:
                 'version': src.version,
             }
 
+            self._progress += 1
             self._results[str(src)] = details
 
         # Add hosts to the list to gather more details about them.

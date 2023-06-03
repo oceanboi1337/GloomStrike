@@ -11,7 +11,11 @@ html, body {
 	background: var(--dark2);
 	height: 100vh;
 	width: 100vw;
-	overflow: hidden !important;
+	overflow: auto !important;
+}
+
+.scrollable {
+	overflow-y: scroll !important;
 }
 
 .navbar {
@@ -36,6 +40,7 @@ html, body {
 }
 
 * {
+	font-family: monospace;
 	color: var(--fore) !important;
 }
 

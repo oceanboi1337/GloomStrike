@@ -63,10 +63,36 @@
             <div class="columns">
                 {% for hash, task in objects.items() %}
                     <div class="column is-4">
-                        <div class="box has-background-dark has-text-centered">
-                            <h1 class="subtitle is-size-5 has-accent2">ID: {{hash}}</h1>
-                            <h1 class="subtitle is-size-5 has-accent2">Type: {{task['type']}}</h1>
-                            <h1 class="subtitle is-size-5 has-accent2">Progress: {{task['object'].progress}}%</h1>
+                        <div class="box has-background-dark" has-text-centered"">
+                            <span class="icon-text is-block">
+                                <span class="icon has-accent2">
+                                  <i class="fas fa-hashtag has-accent2"></i>
+                                </span>
+                                <span class="has-accent2">{{hash}}</span>
+                            </span>
+                            <span class="icon-text is-block">
+                                <span class="icon has-accent2">
+                                  <i class="fas fa-t has-accent2"></i>
+                                </span>
+                                <span class="has-accent2">{{task['type']}}</span>
+                            </span>
+                            <span class="icon-text is-block">
+                                <span class="icon has-accent2">
+                                  <i class="fas fa-spinner has-accent2"></i>
+                                </span>
+                                <span class="has-accent2">{{task['object'].progress}}%</span>
+                            </span>
+                        </div>
+                        <div class="columns">
+                            <div class="column">
+                                <a href="/scans/{{hash}}?action=delete" class="button is-danger is-fullwidth">Delete</a>
+                            </div>
+                            <div class="column">
+                                <a href="/scans/{{hash}}" class="button is-info is-fullwidth">View</a>
+                            </div>
+                            <div class="column">
+                                <a href="/scans/{{hash}}?action=stop" class="button is-danger is-fullwidth">Stop</a>
+                            </div>
                         </div>
                     </div>
                 {% endfor %}
