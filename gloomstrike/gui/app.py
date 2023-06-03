@@ -1,4 +1,4 @@
-import flask, threading
+import flask, threading, os, sys
 from gloomstrike import logger
 
 running_tasks = {}
@@ -15,6 +15,7 @@ class WebServer:
                                 static_folder='gloomstrike/gui/static')
         
         self._app.config['TEMPLATES_AUTO_RELOAD'] = True
+        self._app.config['MAX_CONTENT_LENGTH'] = (1024 ** 3) * 10 # 10 GB
         self._app_thread = None
 
     def add_router(self, prefix: str, name: str, router: flask.Blueprint):

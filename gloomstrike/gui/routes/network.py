@@ -34,7 +34,7 @@ def post():
             protocol = network.Protocol.ICMP
 
         if not host_scanner.ready or not host_scanner.start(protocol=protocol, background=True):
-            return flask.render_template('network.html', {'error': 'Failed to start scan'})
+            return flask.render_template('network.html', error='Failed to start scan')
         
         app.running_tasks[id] = {'type': 'Host Scan', 'object': host_scanner}
 
@@ -44,7 +44,5 @@ def post():
 
 @router.route('/', methods=['GET'])
 def get():
-
-    print(app.running_tasks)
-
+    
     return flask.render_template('network.html')

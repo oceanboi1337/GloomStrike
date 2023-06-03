@@ -90,8 +90,19 @@ html, body {
 	height: 100% !important;
 }
 
-.input {
+.input, .file-cta, .file-name {
 	background-color: var(--dark2) !important;
 	border: solid 1px var(--fore) !important;
 	color: var(--accent2) !important;
+}
+
+select option {
+	background-color: var(--dark) !important;
+	color: var(--accent2) !important;
+}
+
+select {
+	background-color: var(--dark2) !important;
+	color: var(--accent2) !important;
+	border: solid var(--dark2) 1px !important;
 }

@@ -1,1 +1,1 @@
-from . import index, network, scans
+from . import index, network, scans, hashcrack

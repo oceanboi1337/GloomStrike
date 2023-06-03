@@ -11,6 +11,7 @@ def f_gui(args: argparse.Namespace):
     server.add_router('/', 'index', routes.index.router)
     server.add_router('/network', 'network', routes.network.router)
     server.add_router('/scans', 'scans', routes.scans.router)
+    server.add_router('/hashcrack', 'hashcrack', routes.hashcrack.router)
 
     if server.start():
 
