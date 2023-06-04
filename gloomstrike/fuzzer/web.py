@@ -107,7 +107,7 @@ class UrlFuzzer:
 
         try:
 
-            resp = self._session.request(method, target, timeout=timeout, allow_redirects=False)
+            resp = self._session.request(method, target, timeout=timeout, allow_redirects=True)
 
             match resp.status_code:
 
@@ -159,13 +159,12 @@ class UrlFuzzer:
             # Check if the response was a redirect.
             case 301 | 302:
                 logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url} -> {location}', level=logger.Level.LOG)
-                self._results.append({'url': url, 'code': resp.status_code, 'redirect': location, 'size': size})
+                self._results.append({'url': location, 'code': resp.status_code, 'size': size})
                 ret = location
             
             case _:
-
-                self._results.append({'url': url, 'code': resp.status_code, 'redirect': location, 'size': size})
-                self._results.append(url)
+                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url}', level=logger.Level.LOG)
+                self._results.append({'url': url, 'code': resp.status_code, 'size': size})
                 ret = resp.url
 
         return ret

@@ -133,7 +133,46 @@
                 <div class='column'>
                     <h1 class='subtitle has-fore has-text-centered'>Subdomain Fuzzer</h1>
                     <div class="box has-background-dark">
-
+                        <form action="/fuzzer" method="POST" enctype="multipart/form-data">
+                            <div class='field'>
+                                <div class='control has-icons-left'>
+                                    <input class='input' type='text' name='target' placeholder='Target Domain' required>
+                                    <span class='icon is-small is-left'>
+                                        <i class='fas fa-globe has-accent'></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class='field'>
+                                <div class='control has-icons-left'>
+                                    <input class='input' type='number' name='threads' placeholder='Threads'>
+                                    <span class='icon is-small is-left'>
+                                        <i class='fas fa-microchip has-accent'></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="control">
+                                    <p class="has-accent">Subdomain Wordlist</p>
+                                    <div class="file has-name">
+                                        <label class="file-label">
+                                            <input class="file-input" type="file" name="sub_wordlist">
+                                                <span class="file-cta">
+                                                    <span class="file-icon">
+                                                        <i class="fas fa-upload has-accent"></i>
+                                                    </span>
+                                                <span class="file-label has-accent2">Upload</span>
+                                                </span>
+                                            <span class="file-name">Wordlist.txt</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="control">
+                                    <button class="button input">Fuzz</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

@@ -13,7 +13,8 @@ def post():
     file_wordlist = flask.request.files.get('file_wordlist')
     sub_wordlist = flask.request.files.get('sub_wordlist')
 
-    if not (target and dir_wordlist and file_wordlist):
+    if not (target and not (dir_wordlist and file_wordlist) or sub_wordlist):
+        logger.log('No parameters was set', level=logger.Level.ERROR)
         return flask.redirect('/fuzzer')
 
     if dir_wordlist and not sub_wordlist:
@@ -39,6 +40,27 @@ def post():
         object_hash = hash(url_fuzzer)
 
         app.running_tasks[object_hash] = {'type': 'URL Fuzzer', 'object': url_fuzzer}
+
+        return flask.redirect(f'/scans/{object_hash}')
+    
+    if sub_wordlist:
+
+        subdomains = []
+
+        while subdomain := sub_wordlist.stream.readline():
+
+            subdomain = subdomain.rstrip().decode()
+            subdomains.append(subdomain)
+
+        sub_fuzzer = fuzzer.SubFuzzer(target, subdomains)
+
+        object_hash = hash(sub_fuzzer)
+
+        if not sub_fuzzer.start(threads=threads, background=True):
+            logger.log('Failed to start sub fuzzer', level=logger.Level.ERROR)
+            return flask.redirect('/')
+        
+        app.running_tasks[object_hash] = {'type': 'Subdomain Fuzzer', 'object': sub_fuzzer}
 
         return flask.redirect(f'/scans/{object_hash}')
 

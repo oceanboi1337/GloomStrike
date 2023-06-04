@@ -85,6 +85,13 @@
                 </div>
             </div>
             <div class="box has-background-dark">
+                {% if type == 'Subdomain Fuzzer' %}
+                    {% for result in object._results %}
+                    <div class="box has-background-dark2 mb-2">
+                        <h1 class="subtitle p-2 is-size-6 has-accent2">{{result}}</h1>
+                    </div>
+                    {% endfor %}
+                {% else %}
                 {% for result in object._results %}
                 <div class="box has-background-dark2 mb-2">
                     <div class="columns mb-0">
@@ -95,15 +102,15 @@
                             <h1 class="subtitle is-size-6 has-accent2 mb-2">Size: {{result['size']}}</h1>
                         </div>
                     </div>
-                    <div class="columns mb-0">
-                        <div class="column mb-0">
-                            <h1 class="subtitle is-size-6 has-accent2">{{result['url']}}</h1>
+                    <div class="columns">
+                        <div class="column">
+                            <a class="subtitle is-size-6 has-accent2" href="{{result['url']}}">{{result['url']}}</a>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
+                {% endif %}
             </div>
-            <a href=""></a>
         </section>
     </body>
 </html>

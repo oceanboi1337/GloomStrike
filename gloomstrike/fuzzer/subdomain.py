@@ -1,4 +1,4 @@
-import requests, threading, time, re
+import requests, threading, time, re, socket
 from gloomstrike import helpers, logger
 
 class SubFuzzer:
@@ -9,7 +9,7 @@ class SubFuzzer:
     Takes a wordlist with subdomains to check.
     '''
 
-    def __init__(self, domain: str, wordlist: str):
+    def __init__(self, domain: str, wordlist: str | list):
 
         '''
         Strips http(s)://www from the domain if there is any.
@@ -23,7 +23,12 @@ class SubFuzzer:
         self._domain = re.sub(r'(https?://)?(www.)?(!*\/)?', '', domain)
 
         self._wordlist = wordlist
-        self._subdomains = helpers.QueueHandler(max_size=0)
+
+        if type(self._wordlist) == list:
+            self._subdomains = helpers.QueueHandler(wordlist)
+        else:
+            self._subdomains = helpers.QueueHandler(max_size=0)
+
         self._results = []
         self._threads = []
         self._protocol = 'http://'
@@ -65,17 +70,15 @@ class SubFuzzer:
 
             try:
 
-                logger.log(f'\x1b[0K{sub}', end='\r', level=logger.Level.LOG)
+                #logger.log(f'\x1b[0K{sub}', end='\r', level=logger.Level.LOG)
 
-                url = f'{self._protocol}{sub}.{self._domain}'
+                hostname = f'{sub}.{self._domain}'
 
-                resp = requests.get(url, timeout=3)
+                addr = socket.gethostbyname(hostname)
 
-                if resp.ok:
-
-                    logger.log(f'Found subdomain: {sub}.{self._domain}')
-                    self._results.append(url)
-
+                logger.log(f'Found subdomain: {sub}.{self._domain}')
+                self._results.append({'hostname': hostname, 'addr': addr})
+            
             except Exception as e:
                 pass
                 

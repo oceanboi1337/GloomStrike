@@ -33,6 +33,9 @@ def get_int(id):
         return flask.redirect('/scans')
     
     _object = object['object']
+    _type = object['type']
+
+    print(_object._results)
 
     match type(_object):
 
@@ -43,4 +46,6 @@ def get_int(id):
         case hashcrack.Hashcrack:
             return flask.render_template('results/cracking.html', hash=id, object=_object)
         case fuzzer.UrlFuzzer:
-            return flask.render_template('results/fuzzing.html', hash=id, object=_object)
+            return flask.render_template('results/fuzzing.html', hash=id, object=_object, type=_type)
+        case fuzzer.SubFuzzer:
+            return flask.render_template('results/fuzzing.html', hash=id, object=_object, type=_type)
