@@ -18,7 +18,7 @@ class UrlFuzzer:
         _handlers (dict): Dict that contains the list of directories and files to use.
     '''
 
-    def __init__(self, dirs: str, files: str) -> None:
+    def __init__(self, dirs: str | list, files: str | list) -> None:
 
         '''
         Args:
@@ -26,8 +26,20 @@ class UrlFuzzer:
            files (str): Path to the files wordlist.
         '''
 
-        self._dirs = dirs
-        self._files = files
+        self._handlers = {
+            '_dirs': None,
+            '_files': None
+        }
+
+        if type(dirs) == list:
+            self._handlers['_dirs'] = helpers.QueueHandler(dirs)
+        else:
+            self._dirs = dirs
+
+        if type(files) == list:
+            self._handlers['_files'] = helpers.QueueHandler(files)
+        else:
+            self._files = files
 
         self._threads = []
         self._results = []
@@ -35,11 +47,6 @@ class UrlFuzzer:
         self._targets = helpers.QueueHandler()
         self._session = requests.Session()
         self._event = threading.Event()
-
-        self._handlers = {
-            '_dirs': None,
-            '_files': None
-        }
 
     def _load(self):
 
@@ -152,12 +159,12 @@ class UrlFuzzer:
             # Check if the response was a redirect.
             case 301 | 302:
                 logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url} -> {location}', level=logger.Level.LOG)
-                self._results.append(f'{url} -> {location}')
+                self._results.append({'url': url, 'code': resp.status_code, 'redirect': location, 'size': size})
                 ret = location
             
             case _:
 
-                logger.log(f'Code: {resp.status_code}\tSize: {size}\t\t{url}', level=logger.Level.LOG)
+                self._results.append({'url': url, 'code': resp.status_code, 'redirect': location, 'size': size})
                 self._results.append(url)
                 ret = resp.url
 
@@ -272,7 +279,7 @@ class UrlFuzzer:
         '''
 
         # Return false if loading the wordlists failed.
-        if not self._load():
+        if (self._handlers['_dirs'] == None and self._handlers['_files'] == None) and not self._load():
             return False
 
         for _ in range(threads):

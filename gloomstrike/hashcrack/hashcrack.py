@@ -1,7 +1,7 @@
 import mmap, hashlib, threading, time, multiprocessing, os, sys
 from gloomstrike import logger
 
-def _worker(algorithm: str, path: str, results: dict, hashes: list, start: int, end: int):
+def _worker(algorithm: str, path: str, results: dict, hashes: list, start: int, end: int, progress):
 
     '''
     Iterates over each word in the wordlist and checks if the generated hash matches the input hash.
@@ -49,6 +49,8 @@ def _worker(algorithm: str, path: str, results: dict, hashes: list, start: int, 
             m = hashlib.new(algorithm)
             m.update(word)
             word_hash = m.hexdigest()
+
+            #progress.value += len(word)
 
             if word_hash == hash:
 
@@ -99,6 +101,7 @@ class Hashcrack:
 
         self._manager = multiprocessing.Manager()
         self._results = self._manager.dict()
+        self._progress = self._manager.Value('i', 0)
         self._hashes = []
         self._hashes_length = 0
 
@@ -271,7 +274,11 @@ class Hashcrack:
 
     @property
     def progress(self):
-        return round((len(self._results) / self._hashes_length) * 100, 2)
+        
+        if self._hash_count == len(self._results):
+            return 100
+        else:
+            return round((self._progress.value / self._wordlist_size) * 100, 2)
 
     def start(self, algorithm : str, background : bool=False):
 
@@ -330,7 +337,7 @@ class Hashcrack:
 
         for pid in range(self._processors):
 
-            proc = multiprocessing.Process(target=_worker, args=[algorithm, self._wordlist_path, self._results, self._hashes, start, end])
+            proc = multiprocessing.Process(target=_worker, args=[algorithm, self._wordlist_path, self._results, self._hashes, start, end, self._progress])
             proc.start()
 
             # The next process should start where the previous ends.

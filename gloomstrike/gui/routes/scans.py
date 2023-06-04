@@ -1,5 +1,5 @@
 import flask
-from gloomstrike import network, hashcrack
+from gloomstrike import network, hashcrack, fuzzer
 from .. import app
 
 router = flask.Blueprint('scans', __name__)
@@ -32,15 +32,15 @@ def get_int(id):
         object.stop()
         return flask.redirect('/scans')
     
-    _type = object['type']
     _object = object['object']
 
     match type(_object):
 
         case network.PortScanner:
-            return flask.render_template('portscan.html', hash=id, object=_object, type=_type, progress=_object.progress)
+            return flask.render_template('results/portscan.html', hash=id, object=_object)
         case network.HostScanner:
-            return flask.render_template('hostscan.html', hash=id, object=_object, type=_type, progress=_object.progress)
+            return flask.render_template('results/hostscan.html', hash=id, object=_object)
         case hashcrack.Hashcrack:
-            print(_object._hashes)
-            return flask.render_template('cracking.html', hash=id, object=_object, type=_type, progress=0)
+            return flask.render_template('results/cracking.html', hash=id, object=_object)
+        case fuzzer.UrlFuzzer:
+            return flask.render_template('results/fuzzing.html', hash=id, object=_object)
