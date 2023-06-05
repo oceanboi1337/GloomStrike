@@ -34,9 +34,7 @@ def get_int(id):
     
     _object = object['object']
     _type = object['type']
-
-    print(_object._results)
-
+    
     match type(_object):
 
         case network.PortScanner:

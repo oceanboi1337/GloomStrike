@@ -98,6 +98,11 @@ class SubFuzzer:
 
         return self._results
 
+    @property
+    def progress(self):
+
+        return round(((len(self._subdomains._items) - self._subdomains.length) / len(self._subdomains._items)) * 100, 2)
+
     def start(self, threads: int, background: bool = False):
 
         for _ in range(threads):

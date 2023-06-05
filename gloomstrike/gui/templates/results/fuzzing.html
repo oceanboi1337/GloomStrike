@@ -87,8 +87,8 @@
             <div class="box has-background-dark">
                 {% if type == 'Subdomain Fuzzer' %}
                     {% for result in object._results %}
-                    <div class="box has-background-dark2 mb-2">
-                        <h1 class="subtitle p-2 is-size-6 has-accent2">{{result}}</h1>
+                    <div class="box has-background-dark2 mb-2 p-0">
+                        <h1 class="subtitle p-2 is-size-6 has-accent2">{{result['hostname']}} -> {{result['addr']}}</h1>
                     </div>
                     {% endfor %}
                 {% else %}
