@@ -13,7 +13,7 @@ def f_gui(args: argparse.Namespace):
     server.add_router('/scans', 'scans', routes.scans.router)
     server.add_router('/hashcrack', 'hashcrack', routes.hashcrack.router)
     server.add_router('/fuzzer', 'fuzzer', routes.fuzzer.router)
-    server.add_router('/checker', 'checker', routes.checker.route)
+    server.add_router('/checker', 'checker', routes.checker.router)
 
     if server.start():
 

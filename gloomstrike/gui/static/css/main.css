@@ -106,3 +106,7 @@ select {
 	color: var(--accent2) !important;
 	border: solid var(--dark2) 1px !important;
 }
+
+.file-label.is-fullwidth, .file-cta.is-fullwidth {
+	width: 100% !important;
+}

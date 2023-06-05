@@ -1,5 +1,5 @@
 import flask
-from gloomstrike import network, hashcrack, fuzzer
+from gloomstrike import network, hashcrack, fuzzer, checker
 from .. import app
 
 router = flask.Blueprint('scans', __name__)
@@ -47,3 +47,5 @@ def get_int(id):
             return flask.render_template('results/fuzzing.html', hash=id, object=_object, type=_type)
         case fuzzer.SubFuzzer:
             return flask.render_template('results/fuzzing.html', hash=id, object=_object, type=_type)
+        case checker.HttpChecker:
+            return flask.render_template('results/checker.html', hash=id, object=_object, type=_type)

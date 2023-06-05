@@ -194,6 +194,8 @@ class HttpChecker:
             None: Will be returned if it failed to fetch the csrf-token.
         '''
     
+        resp = None
+
         try:
 
             resp = requests.get(self._csrf_url)
@@ -205,7 +207,7 @@ class HttpChecker:
         except Exception as e:
             logger.log(f'Error while requesting {self._csrf_url}', level=logger.Level.ERROR)
 
-        if not resp.ok:
+        if not resp:
             return None
         
         soup = bs4.BeautifulSoup(resp.text, 'html.parser')
@@ -253,7 +255,36 @@ class HttpChecker:
 
         resp = requests.post(url,  data=data, cookies=cookiejar)
 
+        print(resp.text)
+
         return resp.ok
+
+    def load_list(self, usernames: list = None, passwords: list = None, combolist: list = None):
+
+        try:
+
+            if usernames and passwords:
+
+                for username in usernames:
+
+                    for password in passwords:
+
+                        self._credentials.add([username, password])
+
+            if combolist:
+
+                for combo in combolist:
+
+                    if ':' in combo:
+
+                        username, password = combo.split(':')
+                        self._credentials.add([username, password])
+
+            return True
+    
+        except Exception as e:
+            logger.log(f'Failed to generate credential list: {e}')
+            return False
 
     def _checker(self):
 
@@ -284,7 +315,7 @@ class HttpChecker:
 
     def start(self, threads: int, background: bool=False) -> bool:
 
-        logger.info('Starting threads...', level=logger.Level.LOG)
+        logger.log('Starting threads...', level=logger.Level.INFO)
 
         for _ in range(threads):
 

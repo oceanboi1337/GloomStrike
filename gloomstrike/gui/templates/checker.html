@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang='en'>
     <head>
@@ -19,117 +18,155 @@
                 <div class='navbar-menu'>
                     <div class='navbar-start'>
                         <a class='navbar-item' href='/dasboard'>
-                            <span class='icon'>
-                                <i class="fa-solid fa-table-columns"></i>
-                            </span>
-                            <span>Dashboard</span>
+                        <span class='icon'>
+                        <i class="fa-solid fa-table-columns"></i>
+                        </span>
+                        <span>Dashboard</span>
                         </a>
                         <a class='navbar-item' href='/network'>
-                            <span class='icon'>
-                                <i class="fa-solid fa-network-wired"></i>
-                            </span>
-                            <span>Network Mapper</span>
+                        <span class='icon'>
+                        <i class="fa-solid fa-network-wired"></i>
+                        </span>
+                        <span>Network Mapper</span>
                         </a>
-                        <a class='navbar-item is-active' href='/hashcrack'>
-                            <span class='icon'>
-                                <i class="fa-solid fa-hashtag"></i>
-                            </span>
-                            <span>Hash Cracker</span>
+                        <a class='navbar-item' href='/hashcrack'>
+                        <span class='icon'>
+                        <i class="fa-solid fa-hashtag"></i>
+                        </span>
+                        <span>Hash Cracker</span>
                         </a>
                         <a class='navbar-item' href='/fuzzer'>
-                            <span class='icon'>
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </span>
-                            <span>URL Fuzzer</span>
+                        <span class='icon'>
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <span>URL Fuzzer</span>
                         </a>
-                        <a class='navbar-item' href='/checker'>
-                            <span class='icon'>
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                            </span>
-                            <span>Login Checker</span>
+                        <a class='navbar-item is-active' href='/checker'>
+                        <span class='icon'>
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <span>Login Checker</span>
                         </a>
                         <a class="navbar-item" href="/scans">
-                            <span class='icon'>
-                                <i class="fa-solid fa-satellite-dish"></i>
-                            </span>
-                            <span>Active Scans</span>
+                        <span class='icon'>
+                        <i class="fa-solid fa-satellite-dish"></i>
+                        </span>
+                        <span>Active Scans</span>
                         </a>
                     </div>
                 </div>
             </nav>
         </section>
-        <section class='container mt-4'> 
+        <section class='container mt-4'>
             <div class='columns'>
                 <div class='column'>
-                    <h1 class='subtitle has-fore has-text-centered'>Hash Cracker</h1>
+                    <h1 class='subtitle has-fore has-text-centered'>Login Checker</h1>
                     <div class='mb-5 box has-background-dark'>
-                        <form method='POST' action='/hashcrack' enctype="multipart/form-data">
-                            <div class="columns is-multiline">
-                                <div class="column is-half">
-                                    <div class='field'>
-                                        <div class='control has-icons-left'>
-                                            <input class='input' type='text' name='hash' placeholder='Hash' required>
-                                            <span class='icon is-small is-left'>
-                                                <i class='fas fa-hashtag has-accent'></i>
-                                            </span>
+                        <form method='POST' action='/checker' enctype="multipart/form-data">
+                            <div class='field'>
+                                <label class="label has-accent2">Target Login URL</label>
+                                <div class='control has-icons-left'>
+                                    <input class='input' type='text' name='url' placeholder='https://example.com/login' required>
+                                    <span class='icon is-small is-left'>
+                                    <i class='fas fa-bullseye has-accent'></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class='field'>
+                                <label class="label has-accent2">Threads</label>
+                                <div class='control has-icons-left'>
+                                    <input class='input' type='number' name='threads' placeholder='25' required>
+                                    <span class='icon is-small is-left'>
+                                    <i class='fas fa-microchip has-accent'></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class='field'>
+                                <label class="label has-accent2">Login Parameters</label>
+                                <div class='control has-icons-left'>
+                                    <input class='input' type='text' name='parameters' placeholder='username=$USERNAME&password=$PASSWORD&csrf=$CSRF' required>
+                                    <span class='icon is-small is-left'>
+                                    <i class='fas fa-list has-accent'></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class='field'>
+                                <label class="label has-accent2">CSRF Page (Only if applicable)</label>
+                                <div class='control has-icons-left'>
+                                    <input class='input' type='text' name='csrf-url' placeholder='https://example.com/login'>
+                                    <span class='icon is-small is-left'>
+                                    <i class='fas fa-list has-accent'></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class='field'>
+                                <label class="label has-accent2">CSRF Input Name (Only if applicable)</label>
+                                <div class='control has-icons-left'>
+                                    <input class='input' type='text' name='csrf' placeholder='<input name="csrf-token" hidden> -> csrf-token'>
+                                    <span class='icon is-small is-left'>
+                                    <i class='fas fa-list has-accent'></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div class="column">
+                                    <label class="label has-accent2">Usernames</label>
+                                    <div class="field">
+                                        <div class="control">
+                                            <div class="file">
+                                                <label class="file-label is-fullwidth">
+                                                    <input class="file-input" type="file" name="usernames">
+                                                    <span class="file-cta is-fullwidth">
+                                                        <span class="file-icon">
+                                                            <i class="fas fa-upload has-accent2"></i>
+                                                        </span>
+                                                        <span class="file-label has-accent2">Usernames</span>
+                                                    </span>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="column is-half">
-                                    <div class='field'>
-                                        <div class="control has-icons-left">
-                                            <div class="select is-fullwidth">
-                                              <select name="algorithm" required>
-                                                <option>Hashing Algorithm</option>
-                                                {% for algo in algos %}
-                                                    <option value="{{algo}}">{{algo}}</option>
-                                                {% endfor %}
-                                              </select>
+                                <div class="column">
+                                    <label class="label has-accent2">Passwords</label>
+                                    <div class="field">
+                                        <div class="control">
+                                            <div class="file">
+                                                <label class="file-label is-fullwidth">
+                                                    <input class="file-input" type="file" name="passwords">
+                                                    <span class="file-cta is-fullwidth">
+                                                        <span class="file-icon">
+                                                            <i class="fas fa-upload has-accent2"></i>
+                                                        </span>
+                                                        <span class="file-label has-accent2">Passwords</span>
+                                                    </span>
+                                                </label>
                                             </div>
-                                            <div class="icon is-small is-left">
-                                              <i class="fas fa-square-root-variable has-accent"></i>
-                                            </div>
-                                          </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="column is-half">
-                                    <div class="file has-name">
-                                        <label class="file-label">
-                                          <input class="file-input" type="file" name="wordlist">
-                                          <span class="file-cta">
-                                            <span class="file-icon">
-                                              <i class="fas fa-upload has-accent"></i>
-                                            </span>
-                                            <span class="file-label has-accent2">Upload Wordlist</span>
-                                          </span>
-                                          <span class="file-name">Wordlist.txt</span>
-                                        </label>
-                                      </div>
-                                </div>
                                 <div class="column">
-                                    <div class='field'>
-                                        <div class="control has-icons-left">
-                                            <div class="select is-fullwidth">
-                                              <select name="local_wordlist" required>
-                                                <option>Local Wordlist</option>
-                                                {% set index = 0 %}
-                                                {% for wordlist in wordlists %}
-                                                    <option value="{{index}}">{{wordlist}}</option>
-                                                    {% set index = index + 1 %}
-                                                {% endfor %}
-                                              </select>
+                                    <label class="label has-accent2">Combolist</label>
+                                    <div class="field">
+                                        <div class="control">
+                                            <div class="file">
+                                                <label class="file-label is-fullwidth">
+                                                    <input class="file-input" type="file" name="combolist">
+                                                    <span class="file-cta is-fullwidth">
+                                                        <span class="file-icon">
+                                                            <i class="fas fa-upload has-accent2"></i>
+                                                        </span>
+                                                        <span class="file-label has-accent2">Combolist</span>
+                                                    </span>
+                                                </label>
                                             </div>
-                                            <div class="icon is-small is-left">
-                                              <i class="fas fa-file has-accent"></i>
-                                            </div>
-                                          </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <input type="text" name="ps" value="1" hidden>
-                            <div class='field'>
-                                <div class='control'>
-                                    <button class='button input'>Crack</button>
+                            <div class="field">
+                                <div class="control">
+                                    <button class="button input">Start</button>
                                 </div>
                             </div>
                         </form>
