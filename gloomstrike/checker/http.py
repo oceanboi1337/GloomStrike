@@ -253,11 +253,10 @@ class HttpChecker:
 
         data = self._parse_params(params)
 
-        resp = requests.post(url,  data=data, cookies=cookiejar)
-
-        print(resp.text)
-
-        return resp.ok
+        try:
+            return requests.post(url,  data=data, cookies=cookiejar).ok
+        except Exception as e:
+            logger.log(f'Error while sending request: {e}', level=logger.Level.ERROR)
 
     def load_list(self, usernames: list = None, passwords: list = None, combolist: list = None):
 
@@ -316,6 +315,10 @@ class HttpChecker:
     @property
     def progress(self):
         return round((1 - (self._credentials.length / len(self._credentials._items))) * 100, 2)
+
+    def stop(self):
+
+        self._event.set()
 
     def start(self, threads: int, background: bool=False) -> bool:
 

@@ -13,7 +13,7 @@ def post():
     file_wordlist = flask.request.files.get('file_wordlist')
     sub_wordlist = flask.request.files.get('sub_wordlist')
 
-    if not (target and not (dir_wordlist and file_wordlist) or sub_wordlist):
+    if not (target or not ((dir_wordlist and file_wordlist) or sub_wordlist)):
         logger.log('No parameters was set', level=logger.Level.ERROR)
         return flask.redirect('/fuzzer')
 
