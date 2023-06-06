@@ -28,20 +28,29 @@ def post():
 
         while username := usernames.stream.readline():
 
-            username = username.rstrip().decode()
-            usernames_list.append(username)
+            try:
+                username = username.rstrip().decode()
+                usernames_list.append(username)
+            except UnicodeDecodeError as e:
+                logger.log(f'Failed to decode username {username}: {e}')
 
         while password := passwords.stream.readline():
 
-            password = password.rstrip().decode()
-            passwords_list.append(password)
+            try:
+                password = password.rstrip().decode()
+                passwords_list.append(password)
+            except UnicodeDecodeError as e:
+                logger.log(f'Failed to decode password {password}: {e}')
 
     if combolist:
 
         while combo := combolist.stream.readline():
 
-            combo = combo.rstrip().decode()
-            combolist_list.append(combo)
+            try:
+                combo = combo.rstrip().decode()
+                combolist_list.append(combo)
+            except UnicodeDecodeError as e:
+                logger.log(f'Failed to decode combo {combo}: {e}')
     
     _checker = checker.HttpChecker(url, parameters, csrf, csrf_url)
 

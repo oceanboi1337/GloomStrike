@@ -85,7 +85,10 @@
                 </div>
             </div>
             <div class="box has-background-dark">
-                <h1 class="has-accent2">{{object._result}}</h1>
+                {% for username, password in object._results %}
+                    <h1 class="has-accent2">Username: {{username}}</h1>
+                    <h1 class="has-accent2">Password: {{password}}</h1>
+                {% endfor %}
             </div>
         </section>
     </body>

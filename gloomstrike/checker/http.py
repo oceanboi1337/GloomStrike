@@ -313,6 +313,10 @@ class HttpChecker:
 
         return self._results
 
+    @property
+    def progress(self):
+        return round((1 - (self._credentials.length / len(self._credentials._items))) * 100, 2)
+
     def start(self, threads: int, background: bool=False) -> bool:
 
         logger.log('Starting threads...', level=logger.Level.INFO)
