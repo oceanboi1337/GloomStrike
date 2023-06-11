@@ -27,12 +27,23 @@ class QueueHandler:
         return self._length
 
     def reset(self):
+
+        #if self._mutex.locked():
+        #   return False
         
-        if not self._queue.empty():
-            return False
+        #self._mutex.acquire()
+
+        #if not self._queue.empty():
+#
+         #   self._mutex.release()
+        #    return False
 
         for item in self._items:
-            self.add(item)
+            self._queue.put(item)
+
+        print('Done adding')
+
+        #self._mutex.release()
 
     def add(self, item, timeout: int = None):
 

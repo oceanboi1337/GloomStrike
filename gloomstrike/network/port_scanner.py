@@ -4,7 +4,7 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Fix for a scapy ipv
 from scapy.all import sr1, IPv46, TCP
 
 # The top 20 ports from the nmap website
-TOP_20_PORTS=[80, 23, 443, 21, 22, 25, 3389, 110, 445, 139, 143, 53, 135, 3306, 8080, 1723, 111, 995, 993, 5900, 631, 161, 137, 123, 138, 1434, 445, 135, 67, 139, 500, 68, 520, 1900, 4500, 514, 49152, 162, 69]
+TOP_20_PORTS=[80, 23, 443, 21, 22, 25, 3389, 110, 445, 139, 143, 53, 135, 3306, 8080, 5000, 1723, 111, 995, 993, 5900, 631, 161, 137, 123, 138, 1434, 445, 135, 67, 139, 500, 68, 520, 1900, 4500, 514, 49152, 162, 69]
 
 class PortScanner:
 
@@ -130,11 +130,12 @@ class PortScanner:
 
                     try:
                         self.s.sendto(packet, (str(self.target), 0))
+                        break
                     except Exception as e:
                         logger.log(f'Failed to send SYN packet {e}', level=logger.Level.ERROR)
+                        time.sleep(self.timeout / 1000)
 
             self._progress += 1
-            time.sleep(self.timeout / 1000)
 
     def _listener(self):
 

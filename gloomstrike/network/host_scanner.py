@@ -242,7 +242,6 @@ class HostScanner:
 
     @property
     def progress(self):
-        print(self._progress, len(self._hosts._items))
         return round((self._progress / len(self._hosts._items)) * 100, 2)
 
     def _arp_discover(self):
@@ -256,7 +255,9 @@ class HostScanner:
         logger.log(f'Sending ARP packets...', level=logger.Level.INFO)
         
         eth = Ether(dst='ff:ff:ff:ff:ff:ff')
-        arp = ARP(pdst=[str(host) for host in self._hosts]) # Sets the destination to all the hosts in the CIDR range.
+
+        # Sets the destination to all the hosts in the CIDR range.
+        arp = ARP(pdst=[str(host) for host in self._hosts])
 
         answers, unanswered = srp(eth / arp, timeout=3, verbose=0, promisc=False)
 
@@ -276,6 +277,8 @@ class HostScanner:
                 'hostname': str(src),
                 'version': src.version,
             }
+
+            logger.log(f'Found host {src} -> {mac}')
 
             self._progress += 1
             self._results[str(src)] = details

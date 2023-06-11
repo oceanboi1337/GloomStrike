@@ -43,6 +43,7 @@ class UrlFuzzer:
 
         self._threads = []
         self._results = []
+        self._progress = 0
 
         self._targets = helpers.QueueHandler()
         self._session = requests.Session()
@@ -123,7 +124,8 @@ class UrlFuzzer:
             return False
         
         except requests.exceptions.ConnectionError as e:
-            logger.log('Connection refused', level=logger.Level.ERROR)
+            pass
+            logger.log(f'Connection error: {e}', level=logger.Level.ERROR)
         except requests.exceptions.RetryError as e:
             pass
         except requests.exceptions.Timeout as e:
@@ -200,7 +202,10 @@ class UrlFuzzer:
 
                 url = target + file
 
+                self._progress += 1
+
                 if resp := self._request(url):
+
                     self._process_request(resp)
 
             # Checks every directory
@@ -211,23 +216,34 @@ class UrlFuzzer:
 
                 url = target + dir
 
+                self._progress += 1
+
+                if url[-1] != '/':
+                    url += '/'
+
                 if resp := self._request(url):
 
                     if location := self._process_request(resp):
 
-                        self._targets.add(location)
+                        self._targets.add(url)
 
-            # Waits for other threads to finish before resetting the directories list.
-            # If its reset before all threads finish their iteration it will cause a infinite loop.
-            time.sleep(3)
+            # Use a context manager to get a mutex lock and then reset the queues.
+            if not self._handlers['_files']._mutex.locked() and not self._handlers['_dirs']._mutex.locked():
 
-            # Reset the lists as the directories and file names are being popped when iterated.
-            self._handlers['_files'].reset()
-            self._handlers['_dirs'].reset()
+                with self._handlers['_files']._mutex:
+                    self._handlers['_files'].reset()
+                
+                with self._handlers['_dirs']._mutex:
+                    self._handlers['_dirs'].reset()
+
+            # Wait the threads until the reset is done
+            while self._handlers['_files']._mutex.locked() or self._handlers['_dirs']._mutex.locked():
+                
+                time.sleep(1 / 100)
 
             depth += 1
 
-        logger.log(f'Exiting thread ({threading.current_thread().native_id})', logger=logger.Level.INFO)
+        logger.log(f'Exiting thread ({threading.current_thread().native_id})', level=logger.Level.INFO)
 
     def _worker(self):
 

@@ -1,5 +1,6 @@
 import ipaddress, socket, struct, enum, re, os, socket, time, requests
 from gloomstrike.network import models
+from gloomstrike import logger
 from scapy.all import sr1, IP, UDP, DNS, DNSQR, DNSRR
 
 
@@ -114,7 +115,10 @@ def ping(dst : ipaddress._IPAddressBase) -> int:
     s.sendto(ip.pack() + icmp.pack(), (str(dst), 0))
 
     start = time.time()
-    data, addr = s.recvfrom(1024) # Add timeout later
+    try:
+        data, addr = s.recvfrom(1024) # Add timeout later
+    except TimeoutError:
+        logger.log('Ping timed out', level=logger.Level.ERROR)
     s.close()
 
     # Subtracts now - start and multiply by 1000 to get the milisecond value,

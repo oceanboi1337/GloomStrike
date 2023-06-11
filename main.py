@@ -17,7 +17,7 @@ def f_gui(args: argparse.Namespace):
 
     if server.start():
 
-        logger.log('Started GUI server at: {server._host}')
+        logger.log(f'Started GUI server at: http://{server._host}:{server._port}')
 
     while 1:
         
@@ -97,13 +97,13 @@ def f_checker(args: argparse.Namespace):
     if http_checker.load(args.combolist, args.usernames, args.passwords, args.proxies):
         http_checker.start(threads=args.threads, background=False)
 
-    return http_checker.results(format=args.output)
+    return http_checker._results
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', help='Sets verbosity level', default=0, type=int)
-    parser.add_argument('-o', '--output', help='Choose output format', default='')
+    #parser.add_argument('-o', '--output', help='Choose output format', default='')
 
     subparsers = parser.add_subparsers(dest='module')
 

@@ -301,8 +301,6 @@ class HttpChecker:
             if self._event.is_set():
                 break
 
-            logger.log(f'{username}:{password}', level=logger.Level.ERROR, end='\r', flush=True)
-
             if self._check(self._url, username, password):
 
                 self._results.append([username, password])
