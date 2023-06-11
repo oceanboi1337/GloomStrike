@@ -41,8 +41,6 @@ class QueueHandler:
         for item in self._items:
             self._queue.put(item)
 
-        print('Done adding')
-
         #self._mutex.release()
 
     def add(self, item, timeout: int = None):
