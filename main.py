@@ -6,7 +6,7 @@ def f_gui(args: argparse.Namespace):
 
     logger.log('Starting GUI server...', level=logger.Level.INFO)
 
-    server = gui.WebServer('127.0.0.1', 1337)
+    server = gui.WebServer('0.0.0.0', 1337)
 
     server.add_router('/', 'index', routes.index.router)
     server.add_router('/network', 'network', routes.network.router)

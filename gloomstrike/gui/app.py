@@ -5,7 +5,7 @@ running_tasks = {}
 
 class WebServer:
 
-    def __init__(self, host: str = '127.0.0.1', port: int = 1337):
+    def __init__(self, host: str = '0.0.0.0', port: int = 1337):
 
         self._host = host
         self._port = port
